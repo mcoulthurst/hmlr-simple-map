@@ -1,0 +1,17 @@
+{
+  "templates": [
+    {
+      "name": "hmlrSimpleMap",
+      "type": "nunjucks"
+    }
+  ],
+  "assets": [
+    "/assets/"
+  ],
+  "scripts": [
+    "/assets/javascripts/map.js"
+  ],
+  "stylesheets": [
+    "/styles.css"
+  ]
+}
