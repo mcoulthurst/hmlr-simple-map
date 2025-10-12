@@ -12,6 +12,6 @@
     "/assets/javascripts/map.js"
   ],
   "stylesheets": [
-    "/styles.css"
+    "/assets/css/styles.css"
   ]
 }
