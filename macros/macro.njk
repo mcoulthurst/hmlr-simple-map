@@ -1,8 +1,12 @@
 {% macro hmlrSimpleMap(params) %}
 
+    {% if params.target %}
+      {% set customTarget = params.target %}
+    {% endif %}
+
   <figcaption class="govuk-body-s govuk-!-margin-top-2">
-    <div id="map" style="width: 850px; height: 550px; background-color:#ddd;"></div>
-        MAP goes here, centered on {{ params.coords }}
+    <div class="map" data-coords="[{{ params.coords }}]" tabIndex="0"></div>
+        {{ params.target }} goes here, centered on {{ params.coords }}
       </figcaption>
 
 
@@ -10,10 +14,30 @@
   <script src="https://cdn.jsdelivr.net/npm/proj4@2.12.1/dist/proj4.js"></script>
   <script >
 
-    {% if params.coords %}
-    let startPosn = [{{ params.coords }}];
+{#     {% if params.coords %}
+      startPosn = [{{ params.coords }}];
     {% endif %}
+    {% if params.target %}
+      customTarget = "{{params.target}}";
+    {% endif %}
+    console.log(customTarget) #}
 
+
+{# function docReady(fn) {
+    // see if DOM is already available
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        // call on next available tick
+        setTimeout(fn, 1);
+    } else {
+        document.addEventListener("DOMContentLoaded", fn);
+    }
+}   
+
+
+docReady(function() {
+    // DOM is loaded and ready for manipulation here
+    createMap(customTarget, startPosn);
+}); #}
   </script>
 
   
