@@ -5,7 +5,7 @@ function createMap(target, coords, zoom, path_to_geometry) {
   path_to_geometry = path_to_geometry || "";
   console.log('create map ' + target, coords, zoom, path_to_geometry);
 
-  // Define the British National Grid projection
+  // define the British National Grid projection
   proj4.defs("EPSG:27700", "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs");
   ol.proj.proj4.register(proj4);
 
@@ -23,7 +23,7 @@ function createMap(target, coords, zoom, path_to_geometry) {
     })
   });
 
-  // Create vector layer
+  // create vector layer
   const geometryLayer = new ol.layer.Vector({
     source: source,
     style: style
@@ -54,14 +54,12 @@ function createMap(target, coords, zoom, path_to_geometry) {
 }
 
 async function addBoundary(path_to_geometry, map) {
-  console.log("addBoundary " + path_to_geometry);
-
   // get the source to load the polygons into 
   const source = map.getLayers().item(1).getSource();
+  const view = map.getView();
+  const center = view.getCenter();
 
   // Function to load polygons from external file
-  console.log('loading polygons');
-
   try {
     const response = await fetch(path_to_geometry);
 
@@ -69,24 +67,29 @@ async function addBoundary(path_to_geometry, map) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
+    // add features from GeoJSON
     const geojsonData = await response.json();
-    console.log(geojsonData);
-
-    // Add features from GeoJSON
     const features = new ol.format.GeoJSON().readFeatures(geojsonData);
     source.addFeatures(features);
+   
+    // if there are coords (not the default 248050, 53750), use those
+    if (center && (center[0]!=="248050" && center[1] != "53750" )) {
+      view.setCenter(center);
 
-    // Fit view to loaded features
-    const extent = source.getExtent();
+    }else{
+      // fit view to loaded features
+      const extent = source.getExtent();
+      // center the view on the new geometry
+      // extent.some(coord => isFinite(coord)) tests two corner node coords
+      if (extent && extent.some(coord => isFinite(coord))) {
+        map.getView().fit(extent, {
+          padding: [50, 50, 50, 50],
+          maxZoom: 17
+        });
+      }
 
-    if (extent && extent.some(coord => isFinite(coord))) {
-      map.getView().fit(extent, {
-        padding: [50, 50, 50, 50],
-        maxZoom: 17
-      });
     }
-
-    console.log(`Loaded ${features.length} polygons from ${path_to_geometry}`);
+    //console.log(`Loaded ${features.length} polygons from ${path_to_geometry}`);
 
   } catch (error) {
     console.error('Error loading polygons:', error);
@@ -95,12 +98,11 @@ async function addBoundary(path_to_geometry, map) {
     //loadingElement.classList.remove('show');
   }
 
-
 }
 
 document.addEventListener("DOMContentLoaded", (event) => {
   console.log('ready');
-  //get all map class tags
+  // get all map class tags
   let maps = document.getElementsByClassName('map');
 
   // loop thru and assign a target id then get data attributes and call the map function

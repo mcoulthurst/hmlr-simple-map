@@ -20,8 +20,10 @@ Reference the map component using
       coords: "225000, 65000",
       zoom: 16
       height: "400px",
-      width: "620px"
+      width: "620px",
+      path_to_geometry: "/public/boundary.json"
     }) }}
 ```
 
-The coordinates, zoom level, height and width are all optional.
+All the properties are optional, with defaults for coordinates, zoom level, height and width.
+`path_to_geometry` is used to load in geojson (using BNG coordinates) from within the prototype. The map will be centered on the extent automatically. If co-ordinates are also included, then the map will be centered on these.  
