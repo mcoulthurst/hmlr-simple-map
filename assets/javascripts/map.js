@@ -101,7 +101,6 @@ async function addBoundary(path_to_geometry, map) {
 }
 
 document.addEventListener("DOMContentLoaded", (event) => {
-  console.log('ready');
   // get all map class tags
   let maps = document.getElementsByClassName('map');
 

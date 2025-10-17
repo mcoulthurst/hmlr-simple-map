@@ -15,10 +15,10 @@ Reference the map component using
 
 ```
     {{ hmlrSimpleMap({
-      alt: "Map of Plymouth",
-      caption: "Example 3 map component with custom size and default view",
+      alt: "Map of Liskeard",
+      caption: "Example map component with custom size. View is set to specific center point and zoom level",
       coords: "225000, 65000",
-      zoom: 16
+      zoom: 16,
       height: "400px",
       width: "620px",
       path_to_geometry: "/public/boundary.json"
