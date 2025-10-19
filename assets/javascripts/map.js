@@ -1,25 +1,50 @@
 
-function createMap(target, coords, zoom, path_to_geometry) {
+function createMap(target, coords, zoom, path_to_geometry, styleObj) {
   coords = coords || [248050, 53750];
   zoom = zoom || 15;
   path_to_geometry = path_to_geometry || "";
+
   console.log('create map ' + target, coords, zoom, path_to_geometry);
+  console.log(styleObj);
 
   // define the British National Grid projection
   proj4.defs("EPSG:27700", "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs");
   ol.proj.proj4.register(proj4);
 
-  const stroke_color = '#0b0c0c';
-  const fill_color = stroke_color + '33'; // use RGBA Color Space
+  let stroke_color = '#0b0c0c';
+  let width = 3;
+  let lineDash = null;
+  let fill_color = stroke_color + '33'; // use RGBA Color Space
   const source = new ol.source.Vector();
 
-  const style = new ol.style.Style({
+  if(styleObj){
+    if(styleObj.fill){
+      if(styleObj.fill.color){
+        fill_color = styleObj.fill.color;
+      }
+    }
+    if(styleObj.stroke){
+      if(styleObj.stroke.color){
+        stroke_color = styleObj.stroke.color;
+      }
+      if(styleObj.stroke.width){
+        width = styleObj.stroke.width;
+      }
+      if(styleObj.stroke.lineDash){
+        lineDash = styleObj.stroke.lineDash;
+      }
+    }
+  }
+
+  // set default style if none has been passed in
+  let style = new ol.style.Style({
     fill: new ol.style.Fill({
       color: fill_color
     }),
     stroke: new ol.style.Stroke({
       color: stroke_color,
-      width: 3
+      lineDash:lineDash,
+      width: width
     })
   });
 
@@ -48,57 +73,60 @@ function createMap(target, coords, zoom, path_to_geometry) {
   });
 
   if (path_to_geometry) {
-    addBoundary(path_to_geometry, map);
+    addBoundary(path_to_geometry);
   }
 
-}
+  // keep this addBoundary within the main createMap function scope
+  async function addBoundary(path_to_geometry) {
+    // get the source to load the polygons into 
+    const source = map.getLayers().item(1).getSource();
+    const view = map.getView();
+    const center = view.getCenter();
 
-async function addBoundary(path_to_geometry, map) {
-  // get the source to load the polygons into 
-  const source = map.getLayers().item(1).getSource();
-  const view = map.getView();
-  const center = view.getCenter();
+    // Function to load polygons from external file
+    try {
+      const response = await fetch(path_to_geometry);
 
-  // Function to load polygons from external file
-  try {
-    const response = await fetch(path_to_geometry);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    // add features from GeoJSON
-    const geojsonData = await response.json();
-    const features = new ol.format.GeoJSON().readFeatures(geojsonData);
-    source.addFeatures(features);
-   
-    // if there are coords (not the default 248050, 53750), use those
-    if (center && (center[0]!=="248050" && center[1] != "53750" )) {
-      view.setCenter(center);
-
-    }else{
-      // fit view to loaded features
-      const extent = source.getExtent();
-      // center the view on the new geometry
-      // extent.some(coord => isFinite(coord)) tests two corner node coords
-      if (extent && extent.some(coord => isFinite(coord))) {
-        map.getView().fit(extent, {
-          padding: [50, 50, 50, 50],
-          maxZoom: 17
-        });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-    }
-    //console.log(`Loaded ${features.length} polygons from ${path_to_geometry}`);
+      // add features from GeoJSON
+      const geojsonData = await response.json();
+      const features = new ol.format.GeoJSON().readFeatures(geojsonData);
+      source.addFeatures(features);
 
-  } catch (error) {
-    console.error('Error loading polygons:', error);
-    console.log('Loaded fallback polygons due to file loading error');
-  } finally {
-    //loadingElement.classList.remove('show');
+      // if there are coords (not the default 248050, 53750), use those
+      if (center && (center[0] !== "248050" && center[1] != "53750")) {
+        view.setCenter(center);
+
+      } else {
+        // fit view to loaded features
+        const extent = source.getExtent();
+        // center the view on the new geometry
+        // extent.some(coord => isFinite(coord)) tests two corner node coords
+        if (extent && extent.some(coord => isFinite(coord))) {
+          map.getView().fit(extent, {
+            padding: [50, 50, 50, 50],
+            maxZoom: 17
+          });
+        }
+
+      }
+      //console.log(`Loaded ${features.length} polygons from ${path_to_geometry}`);
+
+    } catch (error) {
+      console.error('Error loading polygons:', error);
+      console.log('Loaded fallback polygons due to file loading error');
+    } finally {
+      //loadingElement.classList.remove('show');
+    }
+
   }
 
 }
+
+
 
 document.addEventListener("DOMContentLoaded", (event) => {
   // get all map class tags
@@ -110,12 +138,20 @@ document.addEventListener("DOMContentLoaded", (event) => {
     let coords = JSON.parse(maps[i].dataset.coords);
     if (coords.length == 0) {
       coords = null;
-    }
+    }    
+    console.log(maps[i].dataset.style);
+    let style = null;
+    console.log(style);
+    if (maps[i].dataset.style.length > 0) {
+      style = JSON.parse(maps[i].dataset.style);
+    }    
+    
     let zoom = maps[i].dataset.zoom;
     let path_to_geometry = maps[i].dataset.path_to_geometry;
     maps[i].setAttribute('id', target);
 
-    createMap(target, coords, zoom, path_to_geometry);
+    // todo: wrap the params in an options obj
+    createMap(target, coords, zoom, path_to_geometry, style);
   }
 
 })
