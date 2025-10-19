@@ -5,7 +5,6 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
   path_to_geometry = path_to_geometry || "";
 
   console.log('create map ' + target, coords, zoom, path_to_geometry);
-  console.log(styleObj);
 
   // define the British National Grid projection
   proj4.defs("EPSG:27700", "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs");
@@ -117,7 +116,6 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
 
     } catch (error) {
       console.error('Error loading polygons:', error);
-      console.log('Loaded fallback polygons due to file loading error');
     } finally {
       //loadingElement.classList.remove('show');
     }
@@ -139,9 +137,8 @@ document.addEventListener("DOMContentLoaded", (event) => {
     if (coords.length == 0) {
       coords = null;
     }    
-    console.log(maps[i].dataset.style);
+
     let style = null;
-    console.log(style);
     if (maps[i].dataset.style.length > 0) {
       style = JSON.parse(maps[i].dataset.style);
     }    

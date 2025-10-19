@@ -3,7 +3,7 @@
   {% set width = params.width or '960px' %}
   {% set height = params.height or '540px' %}
 
-  {% if params.style %}
+  {#% if params.style %}
     {% for key, value in params.style %}
       <br/><span class="key">key: {{ key }}:</span>
       {% if value is mapping %}
@@ -19,7 +19,7 @@
         <span class="value">{{ value }}</span>
       {% endif %}
     {% endfor %}
-  {% endif %}
+  {% endif %#}
 
 
 
