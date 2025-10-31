@@ -128,7 +128,7 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
 
 document.addEventListener("DOMContentLoaded", (event) => {
   // get all map class tags
-  let maps = document.getElementsByClassName('map');
+  let maps = document.getElementsByClassName('hmlr-map');
 
   // loop thru and assign a target id then get data attributes and call the map function
   for (let i = 0; i < maps.length; i++) {
