@@ -1,6 +1,6 @@
 # GDS Prototype kit: Map component
 
-## EXPERIMETNAL
+## EXPERIMENTAL
 
 Work in progress: a simple map component.
 
