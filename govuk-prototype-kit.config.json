@@ -1,10 +1,12 @@
 {
-  "templates": [
+  "nunjucksPaths": ["/", "/macros" ],
+  "nunjucksMacros": [
     {
-      "name": "hmlrSimpleMap",
-      "type": "nunjucks"
+      "macroName": "hmlrSimpleMap",
+      "importFrom": "hmlrSimpleMap.njk"
     }
   ],
+
   "assets": [
     "/assets/"
   ],
@@ -14,4 +16,5 @@
   "stylesheets": [
     "/assets/css/styles.css"
   ]
+
 }
