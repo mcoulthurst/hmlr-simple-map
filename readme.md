@@ -1,15 +1,17 @@
 # GDS Prototype kit: Map component
 
+## EXPERIMETNAL
+
 Work in progress: a simple map component.
 
-To run locally, download this repo.
+To run locally, download this repo and use npmpack to create a local package.
 
 Install the component into your prototype using a file path location, eg
 
-`npm install /Users/projects/HMLR/hmlr-simple-map`
+`npm install /Users/projects/HMLR/hmlr-simple-map/hmlr-simple-map-1.0.0.tgz`
 
 In the prototype html page import the component:
-`{% from "../../node_modules/hmlr-simple-map/macros/macro.njk" import hmlrSimpleMap %}`
+`{% from "hmlrSimpleMap.njk" import hmlrSimpleMap %}`
 
 Reference the map component using 
 
