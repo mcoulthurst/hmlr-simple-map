@@ -4,7 +4,7 @@
 
 Work in progress: a simple map component.
 
-To run locally, download this repo and use npmpack to create a local package.
+To run locally, download this repo and use `npm pack` to create a local package.
 
 Install the component into your prototype using a file path location, eg
 
