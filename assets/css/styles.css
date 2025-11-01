@@ -1,8 +1,7 @@
-  
-  .map{
-    background-color:#ddd;
+  .map {
+    background-color: #ddd;
   }
-  
+
   /* Customise the ol zoom controls */
   .ol-zoom {
     position: relative;
@@ -27,12 +26,42 @@
     height: 40px;
     width: 40px;
     padding: 0;
+    margin-top: 6px;
     cursor: pointer;
     background-color: #fff;
     background-size: 30px;
     background-position: 5px 5px;
     overflow: hidden;
     text-indent: -5000px;
+  }
+
+  .ol-zoom-in,
+  .ol-zoom-out {
+    display: block;
+    border: 0;
+    height: 40px;
+    width: 40px;
+    padding: 0;
+    cursor: pointer;
+    background-color: #fff;
+    background-size: 30px;
+    background-position: 5px 5px;
+    overflow: hidden;
+    text-indent: -5000px;
+  }
+
+  .ol-zoom-in:focus,
+  .ol-zoom-out:focus {
+    box-shadow: 0 0 0 2px #fff, inset 0 0 0 0 #0b0c0c, 0 0 0 5px #0b0c0c, 0 0 0 8px #ffdd00;
+    outline: 3px solid #000000;
+    z-index: 99;
+  }
+
+  .ol-zoom-in:hover,
+  .ol-zoom-out:hover {
+    background-color: #b1b4b6;
+    outline: 3px solid #000000;
+    background-clip: padding-box;
   }
 
   /* OpenLayers Scale Line Override */
