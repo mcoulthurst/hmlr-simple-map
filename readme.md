@@ -24,20 +24,23 @@ Reference the map component using
       height: "400px",
       width: "620px",
       path_to_geometry: "/public/boundary.json",
-      style: {
-        fill: {
-          color: "#d4351c33"
-        },
-        stroke: {
-          color: "#d4351c",
-          width: 0.5,
-          lineDash: [5, 5]
-        }
-      }
+      style: "BLUE DASH"
     }) }}
 ```
 
 All the properties are optional, with defaults for coordinates, zoom level, height and width.
 `path_to_geometry` is used to load in geojson (using BNG coordinates) from within the prototype. The map will be centered on the extent automatically. If co-ordinates are also included, then the map will be centered on these. 
 
-The `style` option can be used to set a custom fill and stroke to the imported geometry, using the OpenLayers styling, including the lineDash format.
+The `style` option can be used to set a one of the pre-defined colours (RED, GREEN, BLUE) and line style (DASH, DOT) or a custom style can be used to apply a fill and stroke to the imported geometry, using the OpenLayers styling eg
+```
+  style: {
+    fill: {
+      color: "#d4351c33"
+    },
+    stroke: {
+      color: "#d4351c",
+      width: 0.5,
+      lineDash: [5, 5]
+    }
+  }
+  ``` 
