@@ -1,5 +1,5 @@
 
-function createMap(target, coords, zoom, path_to_geometry, styleObj) {
+function createMap(target, coords, zoom, path_to_geometry, styleObj, tile_url) {
   coords = coords || [248050, 53750];
   zoom = zoom || 15;
   path_to_geometry = path_to_geometry || "";
@@ -10,9 +10,20 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
   proj4.defs("EPSG:27700", "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs");
   ol.proj.proj4.register(proj4);
 
+  const vectorSource = new ol.source.Vector();
+  let source = new ol.source.OSM()
+
+  if (tile_url !== undefined) {
+    // Create XYZ source for base tiles
+    source = new ol.source.XYZ({
+      url: tile_url
+    });
+  }
+
+
   let width = 3;
   let lineDash = null;
-  
+
   const blue_color = '#003078';
   const green_color = '#00703c';
   const red_color = '#d4351c';
@@ -21,14 +32,12 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
   let stroke_color = blue_color;
   let fill_color = stroke_color + '33'; // use RGBA Color Space
 
-  const source = new ol.source.Vector();
 
   if (styleObj) {
     // check for style sets as a string (blue, red or green)
     if (typeof styleObj === "string") {
       styleObj = styleObj.toUpperCase();
 
-      console.log(styleObj);
       if (styleObj.indexOf('RED') > -1) {
         stroke_color = red_color;
       } else if (styleObj.indexOf('GREEN') > -1) {
@@ -41,12 +50,12 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
         lineDash = [5, 5];
       } else if (styleObj.indexOf('DOT') > -1) {
         lineDash = [1, 5];
-      } else  {
+      } else {
         lineDash = null;
       }
 
       fill_color = stroke_color + '33'; // use RGBA Color Space
-      
+
       if (styleObj.indexOf('HIDDEN') > -1) {
         stroke_color = hidden_color;
         fill_color = hidden_color;
@@ -97,13 +106,15 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
 
   // create vector layer
   const geometryLayer = new ol.layer.Vector({
-    source: source,
+    source: vectorSource,
     style: style
   });
 
   // Create map with OSM tiles, passing in the target element and the coords
+
+
   let baseLayer = new ol.layer.Tile({
-    source: new ol.source.OSM()
+    source: source
   });
 
   const map = new ol.Map({
@@ -158,7 +169,7 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
             padding: [50, 50, 50, 50],
             maxZoom: 17
           });
-          if (zoom !== 15 ) {
+          if (zoom !== 15) {
             view.setZoom(zoom);
           }
         }
@@ -177,7 +188,7 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
 
 
   function addHover(map) {
-    
+
     // Add interaction for hover effects
     let hoveredFeature = null;
     const mapElement = map.getTargetElement();
@@ -220,14 +231,14 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
       const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
         return feature;
       });
-      
+
       if (feature) {
         //console.log(feature.get('INSPIREID') );
         // dispatch a custom event
         const mapEvent = new CustomEvent('hmlrMapClickEvent', {
           detail: { message: feature.get('INSPIREID') }
         });
-        
+
         document.dispatchEvent(mapEvent);
       }
     });
@@ -240,7 +251,7 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
 
 document.addEventListener("DOMContentLoaded", (event) => {
   console.log('component loaded');
-  
+
   // get all map class tags
   let maps = document.getElementsByClassName('hmlr-map');
 
@@ -256,13 +267,13 @@ document.addEventListener("DOMContentLoaded", (event) => {
     if (maps[i].dataset.style.length > 0) {
       style = JSON.parse(maps[i].dataset.style);
     }
-
     let zoom = maps[i].dataset.zoom;
+    let tile_url = maps[i].dataset.tileurl;
     let path_to_geometry = maps[i].dataset.path_to_geometry;
     maps[i].setAttribute('id', target);
 
     // todo: wrap the params in an options obj
-    createMap(target, coords, zoom, path_to_geometry, style);
+    createMap(target, coords, zoom, path_to_geometry, style, tile_url);
   }
 
 })

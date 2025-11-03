@@ -30,11 +30,13 @@
       data-zoom="{{ params.zoom }}" 
       data-path_to_geometry="{{ params.path_to_geometry }}" 
       data-style="{{ params.style | dump }}" 
+      data-tileurl="{{ params.tile_url }}" 
       tabIndex="0">
     </div>
 
     <figcaption class="govuk-body-s govuk-!-margin-top-2">
       {{ params.caption }}<br/> 
+      {{ params.tile_url }}
       {# Centered on:
       {{ params.coords }}, zoom level: {{ params.zoom }}
       <br/>
