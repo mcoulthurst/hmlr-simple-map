@@ -10,14 +10,16 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
   proj4.defs("EPSG:27700", "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs");
   ol.proj.proj4.register(proj4);
 
-  let stroke_color = '#0b0c0c';
   let width = 3;
   let lineDash = null;
-
-  let fill_color = stroke_color + '33'; // use RGBA Color Space
+  
   const blue_color = '#003078';
   const green_color = '#00703c';
   const red_color = '#d4351c';
+  const hidden_color = '#d4351c00';
+
+  let stroke_color = 'blue_color';
+  let fill_color = stroke_color + '33'; // use RGBA Color Space
 
   const source = new ol.source.Vector();
 
@@ -43,8 +45,13 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
         lineDash = null;
       }
 
-
       fill_color = stroke_color + '33'; // use RGBA Color Space
+      
+      if (styleObj.indexOf('HIDDEN') > -1) {
+        stroke_color = hidden_color;
+        fill_color = hidden_color;
+      }
+
     } else {
 
       if (styleObj.fill) {
@@ -151,6 +158,9 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
             padding: [50, 50, 50, 50],
             maxZoom: 17
           });
+          if (zoom !== 15 ) {
+            view.setZoom(zoom);
+          }
         }
 
       }
@@ -214,11 +224,12 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
       if (feature) {
         console.log(feature.get('INSPIREID') );
         // dispatch a custom event
-        const myEvent = new CustomEvent('hmlrMapClickEvent', {
-          detail: { INSPIREID: feature.get('INSPIREID') }
+        const mapEvent = new CustomEvent('hmlrMapClickEvent', {
+          detail: { message: feature.get('INSPIREID') }
         });
-
-        mapElement.dispatchEvent(myEvent);
+        
+        console.log(mapEvent);
+        document.dispatchEvent(mapEvent);
 
 
       }
@@ -231,6 +242,8 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
 
 
 document.addEventListener("DOMContentLoaded", (event) => {
+  console.log('component loaded');
+  
   // get all map class tags
   let maps = document.getElementsByClassName('hmlr-map');
 
