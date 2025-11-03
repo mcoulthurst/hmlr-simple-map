@@ -43,4 +43,6 @@ The `style` option can be used to set a one of the pre-defined colours (RED, GRE
       lineDash: [5, 5]
     }
   }
-  ``` 
+  ```
+
+  where line dash is the line length then the gap length. 

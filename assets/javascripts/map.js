@@ -18,7 +18,7 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
   const red_color = '#d4351c';
   const hidden_color = '#d4351c00';
 
-  let stroke_color = 'blue_color';
+  let stroke_color = blue_color;
   let fill_color = stroke_color + '33'; // use RGBA Color Space
 
   const source = new ol.source.Vector();
@@ -181,7 +181,7 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
     // Add interaction for hover effects
     let hoveredFeature = null;
     const mapElement = map.getTargetElement();
-    console.log('add hover', mapElement);
+    //console.log('add hover', mapElement);
 
     map.on('pointermove', function (evt) {
       const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
@@ -222,16 +222,13 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj) {
       });
       
       if (feature) {
-        console.log(feature.get('INSPIREID') );
+        //console.log(feature.get('INSPIREID') );
         // dispatch a custom event
         const mapEvent = new CustomEvent('hmlrMapClickEvent', {
           detail: { message: feature.get('INSPIREID') }
         });
         
-        console.log(mapEvent);
         document.dispatchEvent(mapEvent);
-
-
       }
     });
 
