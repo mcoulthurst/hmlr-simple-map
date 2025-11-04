@@ -4,11 +4,11 @@
 
 Work in progress: a simple map component.
 
-To run locally, download this repo and use `npm pack` to create a local package.
+To run locally, download this repo and use `npm pack` to create a local package (`hmlr-simple-map-1.0.0.tgz`).
 
-Install the component into your prototype using a file path location, eg
+Copy the component (the newly created TGZ file) into your actual prototype. Install the component using a file path location, eg
 
-`npm install /Users/projects/HMLR/hmlr-simple-map/hmlr-simple-map-1.0.0.tgz`
+`npm install hmlr-simple-map-1.0.0.tgz`
 
 In the prototype html page import the component:
 `{% from "hmlrSimpleMap.njk" import hmlrSimpleMap %}`
