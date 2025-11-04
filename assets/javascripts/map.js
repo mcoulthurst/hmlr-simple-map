@@ -5,6 +5,7 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj, tile_url) {
   path_to_geometry = path_to_geometry || "";
 
   console.log('create map ' + target, coords, zoom, path_to_geometry);
+  console.log(tile_url);
 
   // define the British National Grid projection
   proj4.defs("EPSG:27700", "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs");
@@ -13,7 +14,7 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj, tile_url) {
   const vectorSource = new ol.source.Vector();
   let source = new ol.source.OSM()
 
-  if (tile_url !== undefined) {
+  if (tile_url) {
     // Create XYZ source for base tiles
     source = new ol.source.XYZ({
       url: tile_url
