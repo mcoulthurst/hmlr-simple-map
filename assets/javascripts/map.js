@@ -1,11 +1,16 @@
 
-function createMap(target, coords, zoom, path_to_geometry, styleObj, tile_url) {
-  coords = coords || [248050, 53750];
-  zoom = zoom || 15;
-  path_to_geometry = path_to_geometry || "";
+function createMap(target, options) {
+  coords = options.coords || [248050, 53750];
+  zoom = options.zoom || 15;
+  interactive =  false;
+  if(options.interactive.toUpperCase() == "TRUE"){
+    interactive =  true;
+  }
+  path_to_geometry = options.path_to_geometry || "";
+  tile_url = options.tile_url || "";
+  styleObj = options.styleObj || null;
 
   console.log('create map ' + target, coords, zoom, path_to_geometry);
-  console.log(tile_url);
 
   // define the British National Grid projection
   proj4.defs("EPSG:27700", "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs");
@@ -112,8 +117,6 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj, tile_url) {
   });
 
   // Create map with OSM tiles, passing in the target element and the coords
-
-
   let baseLayer = new ol.layer.Tile({
     source: source
   });
@@ -131,9 +134,12 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj, tile_url) {
     })
   });
 
+  
   if (path_to_geometry) {
     addBoundary(path_to_geometry);
-    addHover(map);
+    if (interactive) {
+      addHover(map);
+    }
   }
 
   // keep this addBoundary within the main createMap function scope
@@ -193,7 +199,6 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj, tile_url) {
     // Add interaction for hover effects
     let hoveredFeature = null;
     const mapElement = map.getTargetElement();
-    //console.log('add hover', mapElement);
 
     map.on('pointermove', function (evt) {
       const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
@@ -231,13 +236,12 @@ function createMap(target, coords, zoom, path_to_geometry, styleObj, tile_url) {
     map.on('click', function (evt) {
       const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
         return feature;
-      });
+      });  
 
       if (feature) {
-        //console.log(feature.get('INSPIREID') );
         // dispatch a custom event
         const mapEvent = new CustomEvent('hmlrMapClickEvent', {
-          detail: { message: feature.get('INSPIREID') }
+          detail: { message: feature }
         });
 
         document.dispatchEvent(mapEvent);
@@ -255,6 +259,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
 
   // get all map class tags
   let maps = document.getElementsByClassName('hmlr-map');
+  let options = {};
 
   // loop thru and assign a target id then get data attributes and call the map function
   for (let i = 0; i < maps.length; i++) {
@@ -269,12 +274,20 @@ document.addEventListener("DOMContentLoaded", (event) => {
       style = JSON.parse(maps[i].dataset.style);
     }
     let zoom = maps[i].dataset.zoom;
+    let interactive = maps[i].dataset.interactive;
     let tile_url = maps[i].dataset.tileurl;
     let path_to_geometry = maps[i].dataset.path_to_geometry;
     maps[i].setAttribute('id', target);
 
     // todo: wrap the params in an options obj
-    createMap(target, coords, zoom, path_to_geometry, style, tile_url);
+    options.coords = coords;
+    options.zoom = zoom;
+    options.path_to_geometry = path_to_geometry;
+    options.styleObj = style;
+    options.tile_url = tile_url;
+    options.interactive = interactive;
+
+    createMap(target, options);
   }
 
 })

@@ -23,11 +23,12 @@
 
 
 
-  <figure>
+  <figure class="hmlr-map-wrapper">
     <div class="hmlr-map" style="height:{{ height }}; width:{{ width }}"
       aria-label="{{params.alt}}" role="img" title="{{params.alt}}"
       data-coords="[{{ params.coords }}]" 
       data-zoom="{{ params.zoom }}" 
+      data-interactive="{{ params.interactive }}" 
       data-path_to_geometry="{{ params.path_to_geometry }}" 
       data-style="{{ params.style | dump }}" 
       data-tileurl="{{ params.tile_url }}" 

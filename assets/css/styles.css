@@ -2,6 +2,10 @@
     background-color: #ddd;
   }
 
+  figure.hmlr-map-wrapper {
+    margin: 0px;
+  }
+.hmlr-map-wrapper {
   /* Customise the ol zoom controls */
   .ol-zoom {
     position: relative;
@@ -90,3 +94,4 @@
   .ol-attribution {
     visibility: hidden;
   }
+}
