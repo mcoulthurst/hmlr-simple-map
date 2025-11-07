@@ -1,32 +1,161 @@
 
 function createMap(target, options) {
-  coords = options.coords || [248050, 53750];
-  zoom = options.zoom || 15;
-  interactive =  false;
-  if(options.interactive.toUpperCase() == "TRUE"){
-    interactive =  true;
-  }
-  path_to_geometry = options.path_to_geometry || "";
-  tile_url = options.tile_url || "";
-  styleObj = options.styleObj || null;
 
-  console.log('create map ' + target, coords, zoom, path_to_geometry);
+  let coords = options.coords || [248050, 53750];
+  let zoom = options.zoom || 15;
+  let tile_url = options.tile_url || "";
+  let layerSettings = options.layers || null;
+  let source = new ol.source.OSM();
+
+  console.log('create map ' + target, coords, zoom);
+  console.log(layerSettings);
 
   // define the British National Grid projection
   proj4.defs("EPSG:27700", "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs");
   ol.proj.proj4.register(proj4);
 
-  const vectorSource = new ol.source.Vector();
-  let source = new ol.source.OSM()
-
+  // Create XYZ source for base tiles
   if (tile_url) {
-    // Create XYZ source for base tiles
     source = new ol.source.XYZ({
       url: tile_url
     });
   }
 
+  let hoverStyle = new ol.style.Style({
+    fill: new ol.style.Fill({
+      color: 'rgba(0,48,120,0.3)'
+    }),
+    stroke: new ol.style.Stroke({
+      color: 'rgba(0,48,120,1)',
+      width: 2
+    })
+  })
 
+  // loop through layerSettings, create and style each
+  // capture the layers for the map
+  let layers = [];
+
+  // Create map with OSM tiles, passing in the target element and the coords
+  let baseLayer = new ol.layer.Tile({
+    source: source
+  });
+
+  layers.push(baseLayer);
+
+  if(layerSettings){
+    for( var i=0; i<layerSettings.length; i++)
+    {
+      const style = getStyle(layerSettings[i].style);
+      console.log(style);
+      const vectorSource = new ol.source.Vector();
+      
+      // create vector layer
+      const geometryLayer = new ol.layer.Vector({
+        name: ("LAYER_" + (i+1) ),
+        source: vectorSource,
+        style: style
+      });
+
+      layers.push(geometryLayer);
+    }
+    
+    // add custom listener for map event: hmlrMapClickEvent
+    document.addEventListener('hmlrCheckBoxEvent', (event) => {
+      const message = event.detail.message;
+      const id = message.id;
+      const isChecked = message.isChecked;
+
+      // get layer sn set visibilty
+      const layer = getLayerByName(id);    
+      layer.setVisible(isChecked);
+    });
+
+
+  }
+
+
+
+  const map = new ol.Map({
+    target: target,
+    layers: layers,
+    view: new ol.View({
+      projection: 'EPSG:27700',
+      center: coords,
+      zoom: zoom
+    })
+  });
+
+  // once the map has been created add the boundaries
+  if(layerSettings){
+    for( var i=0; i<layerSettings.length; i++)
+    {
+
+      if (layerSettings[i].path_to_geometry) {
+        addBoundary(layerSettings[i].path_to_geometry, i+1); // account forthe base layer source
+        if (layerSettings[i].interactive) {
+          addHover(map);
+        } 
+
+      }
+    }
+  }
+
+  
+
+
+  // keep this addBoundary within the main createMap function scope
+  async function addBoundary(path_to_geometry, layerCount) {
+    // get the source to load the polygons into 
+    const source = map.getLayers().item(layerCount).getSource();
+    const view = map.getView();
+    const center = view.getCenter();
+
+    // Function to load polygons from external file
+    try {
+      const response = await fetch(path_to_geometry);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // add features from GeoJSON
+      const geojsonData = await response.json();
+      const features = new ol.format.GeoJSON().readFeatures(geojsonData);
+      source.addFeatures(features);
+
+      // if there are coords (not the default 248050, 53750), use those
+      if (center && (center[0] !== "248050" && center[1] != "53750")) {
+        view.setCenter(center);
+
+      } else {
+        // fit view to loaded features
+        const extent = source.getExtent();
+        // center the view on the new geometry
+        // extent.some(coord => isFinite(coord)) tests two corner node coords
+        if (extent && extent.some(coord => isFinite(coord))) {
+          map.getView().fit(extent, {
+            padding: [50, 50, 50, 50],
+            maxZoom: 17
+          });
+          if (zoom !== 15) {
+            view.setZoom(zoom);
+          }
+        }
+
+      }
+      //console.log(`Loaded ${features.length} polygons from ${path_to_geometry}`);
+
+    } catch (error) {
+      console.error('Error loading polygons:', error);
+    } finally {
+      //loadingElement.classList.remove('show');
+    }
+
+  }
+
+
+
+  function getStyle(styleObj) {
   let width = 3;
   let lineDash = null;
 
@@ -99,97 +228,7 @@ function createMap(target, options) {
       width: width
     })
   });
-
-  let hoverStyle = new ol.style.Style({
-    fill: new ol.style.Fill({
-      color: 'rgba(0,48,120,0.3)'
-    }),
-    stroke: new ol.style.Stroke({
-      color: 'rgba(0,48,120,1)',
-      width: 2
-    })
-  })
-
-  // create vector layer
-  const geometryLayer = new ol.layer.Vector({
-    source: vectorSource,
-    style: style
-  });
-
-  // Create map with OSM tiles, passing in the target element and the coords
-  let baseLayer = new ol.layer.Tile({
-    source: source
-  });
-
-  const map = new ol.Map({
-    target: target,
-    layers: [
-      baseLayer,
-      geometryLayer
-    ],
-    view: new ol.View({
-      projection: 'EPSG:27700',
-      center: coords,
-      zoom: zoom
-    })
-  });
-
-  
-  if (path_to_geometry) {
-    addBoundary(path_to_geometry);
-    if (interactive) {
-      addHover(map);
-    }
-  }
-
-  // keep this addBoundary within the main createMap function scope
-  async function addBoundary(path_to_geometry) {
-    // get the source to load the polygons into 
-    const source = map.getLayers().item(1).getSource();
-    const view = map.getView();
-    const center = view.getCenter();
-
-    // Function to load polygons from external file
-    try {
-      const response = await fetch(path_to_geometry);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // add features from GeoJSON
-      const geojsonData = await response.json();
-      const features = new ol.format.GeoJSON().readFeatures(geojsonData);
-      source.addFeatures(features);
-
-      // if there are coords (not the default 248050, 53750), use those
-      if (center && (center[0] !== "248050" && center[1] != "53750")) {
-        view.setCenter(center);
-
-      } else {
-        // fit view to loaded features
-        const extent = source.getExtent();
-        // center the view on the new geometry
-        // extent.some(coord => isFinite(coord)) tests two corner node coords
-        if (extent && extent.some(coord => isFinite(coord))) {
-          map.getView().fit(extent, {
-            padding: [50, 50, 50, 50],
-            maxZoom: 17
-          });
-          if (zoom !== 15) {
-            view.setZoom(zoom);
-          }
-        }
-
-      }
-      //console.log(`Loaded ${features.length} polygons from ${path_to_geometry}`);
-
-    } catch (error) {
-      console.error('Error loading polygons:', error);
-    } finally {
-      //loadingElement.classList.remove('show');
-    }
-
+  return style
   }
 
 
@@ -250,6 +289,12 @@ function createMap(target, options) {
 
   }
 
+
+  function getLayerByName(name) {
+    return map.getLayers().getArray().find(layer => layer.get('name') === name);
+  }
+
+
 }
 
 
@@ -259,6 +304,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
 
   // get all map class tags
   let maps = document.getElementsByClassName('hmlr-map');
+  
   let options = {};
 
   // loop thru and assign a target id then get data attributes and call the map function
@@ -269,25 +315,45 @@ document.addEventListener("DOMContentLoaded", (event) => {
       coords = null;
     }
 
-    let style = null;
-    if (maps[i].dataset.style.length > 0) {
-      style = JSON.parse(maps[i].dataset.style);
+    let layers = null;
+    if (maps[i].dataset.layers.length > 0) {
+      layers = JSON.parse(maps[i].dataset.layers);
     }
+
     let zoom = maps[i].dataset.zoom;
-    let interactive = maps[i].dataset.interactive;
     let tile_url = maps[i].dataset.tileurl;
-    let path_to_geometry = maps[i].dataset.path_to_geometry;
     maps[i].setAttribute('id', target);
 
-    // todo: wrap the params in an options obj
     options.coords = coords;
     options.zoom = zoom;
-    options.path_to_geometry = path_to_geometry;
-    options.styleObj = style;
     options.tile_url = tile_url;
-    options.interactive = interactive;
+    options.layers = layers;
 
     createMap(target, options);
+
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]')
+    //const checkboxes = document.getElementsByClassName('map-layer');
+
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function () {
+/*         if (this.checked) {
+          console.log(`${this.id} is checked`);
+        } else {
+          console.log(`${this.id} is unchecked`);
+        } */
+        const message = {
+          id: this.id,
+          isChecked: this.checked
+        };
+        // dispatch a custom event
+        const clickEvent = new CustomEvent('hmlrCheckBoxEvent', {
+          detail: { message: message }
+        });
+        
+        document.dispatchEvent(clickEvent);
+      });
+    });
+
   }
 
 })

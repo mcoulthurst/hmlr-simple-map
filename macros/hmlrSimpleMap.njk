@@ -30,25 +30,46 @@
       data-zoom="{{ params.zoom }}" 
       data-interactive="{{ params.interactive }}" 
       data-path_to_geometry="{{ params.path_to_geometry }}" 
+      data-tileurl="{{ params.tile_url }}"
       data-style="{{ params.style | dump }}" 
-      data-tileurl="{{ params.tile_url }}" 
+      data-layers="{{ params.layers | dump }}" 
+      
       tabIndex="0">
     </div>
 
     <figcaption class="govuk-body-s govuk-!-margin-top-2">
       {{ params.caption }}<br/> 
       {{ params.tile_url }}
-      {# Centered on:
-      {{ params.coords }}, zoom level: {{ params.zoom }}
-      <br/>
-      Alt text: {{ params.alt }}
-      <br/>
-      Style: {{ params.style | dump }}
-       #}
     </figcaption>
   </figure>
 
-  
+  {% if params.layers %}
+
+<div class="govuk-form-group">
+  <fieldset class="govuk-fieldset">
+    <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+      <h1 class="govuk-fieldset__heading">
+        Layers
+      </h1>
+    </legend>
+    <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+      {% for layer in params.layers %}
+      <div class="govuk-checkboxes__item">
+        <input class="govuk-checkboxes__input map-layer" id="LAYER_{{loop.index}}" name="LAYER_{{loop.index}}" type="checkbox" value="{{loop.index}}" checked>
+        <label class="govuk-label govuk-checkboxes__label" for="LAYER_{{loop.index}}">
+          {{ layer.path_to_geometry | split("/") | last }}
+        </label>
+      </div>
+      {% endfor %}
+      
+      
+    </div>
+  </fieldset>
+</div>
+
+  {% endif %}
+
+  {# can these be added as part of the config.json? #}
   <script src="https://cdn.jsdelivr.net/npm/ol@10.3.1/dist/ol.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/proj4@2.12.1/dist/proj4.js"></script>
 
