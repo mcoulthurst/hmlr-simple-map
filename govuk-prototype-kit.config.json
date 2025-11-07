@@ -7,9 +7,6 @@
     }
   ],
 
-  "assets": [
-    "/assets/"
-  ],
   "scripts": [
     "/assets/javascripts/map.js"
   ],

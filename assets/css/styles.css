@@ -94,4 +94,7 @@
   .ol-attribution {
     visibility: hidden;
   }
+  .ol-control {
+  background-color: transparent;
+  }
 }
