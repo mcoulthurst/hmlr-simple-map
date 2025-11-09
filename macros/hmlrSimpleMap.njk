@@ -31,7 +31,6 @@
       data-interactive="{{ params.interactive }}" 
       data-path_to_geometry="{{ params.path_to_geometry }}" 
       data-tileurl="{{ params.tile_url }}"
-      data-style="{{ params.style | dump }}" 
       data-layers="{{ params.layers | dump }}" 
       
       tabIndex="0">
@@ -44,6 +43,7 @@
   </figure>
 
   {% if params.layers %}
+  {% if params.layerControls===true or params.layerControls==="true" %}
 
 <div class="govuk-form-group">
   <fieldset class="govuk-fieldset">
@@ -67,6 +67,7 @@
   </fieldset>
 </div>
 
+  {% endif %}
   {% endif %}
 
   {# can these be added as part of the config.json? #}

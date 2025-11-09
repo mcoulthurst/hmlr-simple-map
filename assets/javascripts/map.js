@@ -6,6 +6,7 @@ function createMap(target, options) {
   let tile_url = options.tile_url || "";
   let layerSettings = options.layers || null;
   let source = new ol.source.OSM();
+  let i = 0;
 
   console.log('create map ' + target, coords, zoom);
   console.log(layerSettings);
@@ -43,7 +44,7 @@ function createMap(target, options) {
   layers.push(baseLayer);
 
   if(layerSettings){
-    for( var i=0; i<layerSettings.length; i++)
+    for( i=0; i<layerSettings.length; i++)
     {
       const style = getStyle(layerSettings[i].style);
       console.log(style);
@@ -69,11 +70,7 @@ function createMap(target, options) {
       const layer = getLayerByName(id);    
       layer.setVisible(isChecked);
     });
-
-
   }
-
-
 
   const map = new ol.Map({
     target: target,
@@ -87,24 +84,20 @@ function createMap(target, options) {
 
   // once the map has been created add the boundaries
   if(layerSettings){
-    for( var i=0; i<layerSettings.length; i++)
+    for( i=0; i<layerSettings.length; i++)
     {
-
       if (layerSettings[i].path_to_geometry) {
-        addBoundary(layerSettings[i].path_to_geometry, i+1); // account forthe base layer source
+        const index = layerSettings[i].geometry_index || null;
+        addBoundary(layerSettings[i].path_to_geometry, i+1, index); // account for the base layer source
         if (layerSettings[i].interactive) {
           addHover(map);
         } 
-
       }
     }
   }
 
-  
-
-
   // keep this addBoundary within the main createMap function scope
-  async function addBoundary(path_to_geometry, layerCount) {
+  async function addBoundary(path_to_geometry, layerCount, idx) {
     // get the source to load the polygons into 
     const source = map.getLayers().item(layerCount).getSource();
     const view = map.getView();
@@ -117,16 +110,18 @@ function createMap(target, options) {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
       // add features from GeoJSON
-      const geojsonData = await response.json();
+      let geojsonData = await response.json();
+      if (idx){
+        geojsonData = geojsonData.features[ idx ];
+      }
       const features = new ol.format.GeoJSON().readFeatures(geojsonData);
+
       source.addFeatures(features);
 
       // if there are coords (not the default 248050, 53750), use those
       if (center && (center[0] !== "248050" && center[1] != "53750")) {
         view.setCenter(center);
-
       } else {
         // fit view to loaded features
         const extent = source.getExtent();
@@ -141,100 +136,89 @@ function createMap(target, options) {
             view.setZoom(zoom);
           }
         }
-
       }
       //console.log(`Loaded ${features.length} polygons from ${path_to_geometry}`);
-
     } catch (error) {
       console.error('Error loading polygons:', error);
     } finally {
       //loadingElement.classList.remove('show');
     }
-
   }
 
-
-
   function getStyle(styleObj) {
-  let width = 3;
-  let lineDash = null;
+    let width = 3;
+    let lineDash = null;
 
-  const blue_color = '#003078';
-  const green_color = '#00703c';
-  const red_color = '#d4351c';
-  const hidden_color = '#d4351c00';
+    const blue_color = '#003078';
+    const green_color = '#00703c';
+    const red_color = '#d4351c';
+    const hidden_color = '#d4351c00';
 
-  let stroke_color = blue_color;
-  let fill_color = stroke_color + '33'; // use RGBA Color Space
+    let stroke_color = blue_color;
+    let fill_color = stroke_color + '33'; // use RGBA Color Space
 
+    if (styleObj) {
+      // check for style sets as a string (blue, red or green)
+      if (typeof styleObj === "string") {
+        styleObj = styleObj.toUpperCase();
 
-  if (styleObj) {
-    // check for style sets as a string (blue, red or green)
-    if (typeof styleObj === "string") {
-      styleObj = styleObj.toUpperCase();
+        if (styleObj.indexOf('RED') > -1) {
+          stroke_color = red_color;
+        } else if (styleObj.indexOf('GREEN') > -1) {
+          stroke_color = green_color;
+        } else {
+          stroke_color = blue_color;
+        }
+        // check for line style (dashed or dotted)
+        if (styleObj.indexOf('DASH') > -1) {
+          lineDash = [5, 5];
+        } else if (styleObj.indexOf('DOT') > -1) {
+          lineDash = [1, 5];
+        } else {
+          lineDash = null;
+        }
 
-      if (styleObj.indexOf('RED') > -1) {
-        stroke_color = red_color;
-      } else if (styleObj.indexOf('GREEN') > -1) {
-        stroke_color = green_color;
+        fill_color = stroke_color + '33'; // use RGBA Color Space
+
+        if (styleObj.indexOf('HIDDEN') > -1) {
+          stroke_color = hidden_color;
+          fill_color = hidden_color;
+        }
       } else {
-        stroke_color = blue_color;
-      }
-      // check for line style (dashed or dotted)
-      if (styleObj.indexOf('DASH') > -1) {
-        lineDash = [5, 5];
-      } else if (styleObj.indexOf('DOT') > -1) {
-        lineDash = [1, 5];
-      } else {
-        lineDash = null;
-      }
-
-      fill_color = stroke_color + '33'; // use RGBA Color Space
-
-      if (styleObj.indexOf('HIDDEN') > -1) {
-        stroke_color = hidden_color;
-        fill_color = hidden_color;
-      }
-
-    } else {
-
-      if (styleObj.fill) {
-        if (styleObj.fill.color) {
-          fill_color = styleObj.fill.color;
+        if (styleObj.fill) {
+          if (styleObj.fill.color) {
+            fill_color = styleObj.fill.color;
+          }
         }
-      }
-      if (styleObj.stroke) {
-        if (styleObj.stroke.color) {
-          stroke_color = styleObj.stroke.color;
-        }
-        if (styleObj.stroke.width) {
-          width = styleObj.stroke.width;
-        }
-        if (styleObj.stroke.lineDash) {
-          lineDash = styleObj.stroke.lineDash;
+        if (styleObj.stroke) {
+          if (styleObj.stroke.color) {
+            stroke_color = styleObj.stroke.color;
+          }
+          if (styleObj.stroke.width) {
+            width = styleObj.stroke.width;
+          }
+          if (styleObj.stroke.lineDash) {
+            lineDash = styleObj.stroke.lineDash;
+          }
         }
       }
     }
+
+    // set default style if none has been passed in
+    let style = new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: fill_color
+      }),
+      stroke: new ol.style.Stroke({
+        color: stroke_color,
+        lineDash: lineDash,
+        width: width
+      })
+    });
+    return style
   }
-
-  // set default style if none has been passed in
-  let style = new ol.style.Style({
-    fill: new ol.style.Fill({
-      color: fill_color
-    }),
-    stroke: new ol.style.Stroke({
-      color: stroke_color,
-      lineDash: lineDash,
-      width: width
-    })
-  });
-  return style
-  }
-
-
 
   function addHover(map) {
-
     // Add interaction for hover effects
     let hoveredFeature = null;
     const mapElement = map.getTargetElement();
@@ -282,46 +266,38 @@ function createMap(target, options) {
         const mapEvent = new CustomEvent('hmlrMapClickEvent', {
           detail: { message: feature }
         });
-
         document.dispatchEvent(mapEvent);
       }
     });
-
   }
-
 
   function getLayerByName(name) {
     return map.getLayers().getArray().find(layer => layer.get('name') === name);
   }
-
-
 }
 
 
-
-document.addEventListener("DOMContentLoaded", (event) => {
+document.addEventListener("DOMContentLoaded", () => {
   console.log('component loaded');
-
   // get all map class tags
   let maps = document.getElementsByClassName('hmlr-map');
-  
   let options = {};
 
   // loop thru and assign a target id then get data attributes and call the map function
   for (let i = 0; i < maps.length; i++) {
     let target = 'map' + (i + 1);
+    let zoom = maps[i].dataset.zoom;
+    let tile_url = maps[i].dataset.tileurl;
+
     let coords = JSON.parse(maps[i].dataset.coords);
     if (coords.length == 0) {
       coords = null;
     }
-
     let layers = null;
     if (maps[i].dataset.layers.length > 0) {
       layers = JSON.parse(maps[i].dataset.layers);
     }
 
-    let zoom = maps[i].dataset.zoom;
-    let tile_url = maps[i].dataset.tileurl;
     maps[i].setAttribute('id', target);
 
     options.coords = coords;
@@ -331,16 +307,9 @@ document.addEventListener("DOMContentLoaded", (event) => {
 
     createMap(target, options);
 
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]')
-    //const checkboxes = document.getElementsByClassName('map-layer');
-
-    checkboxes.forEach(checkbox => {
+    const checkboxes = document.getElementsByClassName('govuk-checkboxes__input');
+    Array.from(checkboxes).forEach(checkbox => {
       checkbox.addEventListener('change', function () {
-/*         if (this.checked) {
-          console.log(`${this.id} is checked`);
-        } else {
-          console.log(`${this.id} is unchecked`);
-        } */
         const message = {
           id: this.id,
           isChecked: this.checked
@@ -349,11 +318,8 @@ document.addEventListener("DOMContentLoaded", (event) => {
         const clickEvent = new CustomEvent('hmlrCheckBoxEvent', {
           detail: { message: message }
         });
-        
         document.dispatchEvent(clickEvent);
       });
     });
-
   }
-
 })
