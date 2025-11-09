@@ -57,7 +57,7 @@
       <div class="govuk-checkboxes__item">
         <input class="govuk-checkboxes__input map-layer" id="LAYER_{{loop.index}}" name="LAYER_{{loop.index}}" type="checkbox" value="{{loop.index}}" checked>
         <label class="govuk-label govuk-checkboxes__label" for="LAYER_{{loop.index}}">
-          {{ layer.path_to_geometry | split("/") | last }}
+          {{ layer.path_to_geometry }}
         </label>
       </div>
       {% endfor %}
