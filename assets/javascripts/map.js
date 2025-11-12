@@ -82,6 +82,10 @@ function createMap(target, options) {
     })
   });
 
+  // store the map ref
+  const mapElement = document.getElementById(target);
+  mapElement._olMap = map;
+
   // once the map has been created add the boundaries
   if(layerSettings){
     for( i=0; i<layerSettings.length; i++)
