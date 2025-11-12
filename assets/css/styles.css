@@ -1,10 +1,11 @@
-  .map {
-    background-color: #ddd;
-  }
+.map {
+  background-color: #ddd;
+}
 
-  figure.hmlr-map-wrapper {
-    margin: 0px;
-  }
+figure.hmlr-map-wrapper {
+  margin: 0;
+}
+
 .hmlr-map-wrapper {
   /* Customise the ol zoom controls */
   .ol-zoom {

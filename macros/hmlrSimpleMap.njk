@@ -37,17 +37,16 @@
     </div>
 
     <figcaption class="govuk-body-s govuk-!-margin-top-2">
-      {{ params.caption }}<br/> 
-      {{ params.tile_url }}
+      {{ params.caption }}
     </figcaption>
   </figure>
 
   {% if params.layers %}
   {% if params.layerControls===true or params.layerControls==="true" %}
 
-<div class="govuk-form-group">
+<div class="govuk-form-group layer_controls">
   <fieldset class="govuk-fieldset">
-    <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+    <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
       <h1 class="govuk-fieldset__heading">
         Layers
       </h1>
@@ -56,8 +55,9 @@
       {% for layer in params.layers %}
       <div class="govuk-checkboxes__item">
         <input class="govuk-checkboxes__input map-layer" id="LAYER_{{loop.index}}" name="LAYER_{{loop.index}}" type="checkbox" value="{{loop.index}}" checked>
-        <label class="govuk-label govuk-checkboxes__label" for="LAYER_{{loop.index}}">
-          {{ layer.path_to_geometry }}
+        <label class=" govuk-checkboxes__label govuk-body-s layer_label" for="LAYER_{{loop.index}}">
+          {{ layer.description or layer.path_to_geometry }}
+
         </label>
       </div>
       {% endfor %}

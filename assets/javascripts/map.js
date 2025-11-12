@@ -129,8 +129,8 @@ function createMap(target, options) {
         // extent.some(coord => isFinite(coord)) tests two corner node coords
         if (extent && extent.some(coord => isFinite(coord))) {
           map.getView().fit(extent, {
-            padding: [50, 50, 50, 50],
-            maxZoom: 17
+            padding: [20, 20, 20, 20],
+            maxZoom: 18
           });
           if (zoom !== 15) {
             view.setZoom(zoom);
@@ -215,6 +215,29 @@ function createMap(target, options) {
         width: width
       })
     });
+
+
+    if (styleObj) {
+      if (typeof styleObj === "string") {
+        if (styleObj.indexOf('HATCHED') > -1) {
+          console.log('got hatched');
+
+          var hatched_fill = new ol.style.Fill();
+          hatched_fill.setColor(hatch_pattern(stroke_color));
+            
+          style = new ol.style.Style({
+            fill: hatched_fill,
+            stroke: new ol.style.Stroke({
+              color: stroke_color,
+              width: 2,
+              lineDash: [5, 5]
+            })
+          })
+
+        }
+      }
+    }
+
     return style
   }
 
@@ -275,6 +298,34 @@ function createMap(target, options) {
     return map.getLayers().getArray().find(layer => layer.get('name') === name);
   }
 }
+
+var hatch_pattern = function (colour) {
+  var canvas = document.createElement('canvas');
+  var context = canvas.getContext('2d');
+
+  var pixel_ratio = devicePixelRatio;
+  var width = 16 * pixel_ratio;
+  var height = 16 * pixel_ratio;
+  var offset = width * 0.93;
+
+  canvas.width = width;
+  canvas.height = height;
+  context.strokeStyle = colour;
+  context.lineWidth = 1;
+
+  context.beginPath();
+  //draw the diagonal line
+  context.moveTo(0, 0);
+  context.lineTo(width, height);
+  //Fill in the top right of the corner so adjacent squares don't look strange
+  context.moveTo(width - offset, height);
+  context.lineTo(0, offset);
+  //Fill in the top right of the corner so adjacent squares don't look strange
+  context.moveTo(width, height - offset);
+  context.lineTo(offset, 0);
+  context.stroke()
+  return context.createPattern(canvas, 'repeat');
+};
 
 
 document.addEventListener("DOMContentLoaded", () => {
