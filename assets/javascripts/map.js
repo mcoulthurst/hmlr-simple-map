@@ -1,377 +1,560 @@
+/**
+ * HMLR Map Component
+ * OpenLayers-based mapping solution with British National Grid projection support
+ */
 
-function createMap(target, options) {
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
-  let coords = options.coords || [248050, 53750];
-  let zoom = options.zoom || 15;
-  let tile_url = options.tile_url || "";
-  let layerSettings = options.layers || null;
-  let source = new ol.source.OSM();
-  let i = 0;
+const PROJECTION = {
+  EPSG_27700: "EPSG:27700",
+  DEFINITION: "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs"
+};
 
-  console.log('create map ' + target, coords, zoom);
+const COLORS = {
+  BLUE: '#003078',
+  GREEN: '#00703c',
+  RED: '#d4351c',
+  HIDDEN: '#d4351c00'
+};
 
-  // define the British National Grid projection
-  proj4.defs("EPSG:27700", "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs");
+const DEFAULTS = {
+  COORDS: [248050, 53750],
+  ZOOM: 15,
+  MAX_ZOOM: 18,
+  PADDING: [20, 20, 20, 20],
+  STROKE_WIDTH: 3,
+  HOVER_STROKE_WIDTH: 2,
+  OPACITY: '33' // hex opacity for fills
+};
+
+const EVENTS = {
+  CHECKBOX: 'hmlrCheckBoxEvent',
+  MAP_CLICK: 'hmlrMapClickEvent'
+};
+
+const SELECTORS = {
+  MAP_CLASS: 'hmlr-map',
+  CHECKBOX_CLASS: 'govuk-checkboxes__input'
+};
+
+// ============================================================================
+// PROJECTION INITIALIZATION
+// ============================================================================
+
+/**
+ * Initialize and register the British National Grid projection
+ */
+function initializeProjection() {
+  proj4.defs(PROJECTION.EPSG_27700, PROJECTION.DEFINITION);
   ol.proj.proj4.register(proj4);
-
-  // Create XYZ source for base tiles
-  if (tile_url) {
-    source = new ol.source.XYZ({
-      url: tile_url
-    });
-  }
-
-  let hoverStyle = new ol.style.Style({
-    fill: new ol.style.Fill({
-      color: 'rgba(0,48,120,0.3)'
-    }),
-    stroke: new ol.style.Stroke({
-      color: 'rgba(0,48,120,1)',
-      width: 2
-    })
-  })
-
-  // loop through layerSettings, create and style each
-  // capture the layers for the map
-  let layers = [];
-
-  // Create map with OSM tiles, passing in the target element and the coords
-  let baseLayer = new ol.layer.Tile({
-    source: source
-  });
-
-  layers.push(baseLayer);
-
-  if(layerSettings){
-    for( i=0; i<layerSettings.length; i++)
-    {
-      const style = getStyle(layerSettings[i].style);
-      const vectorSource = new ol.source.Vector();
-      
-      // create vector layer
-      const geometryLayer = new ol.layer.Vector({
-        name: ("LAYER_" + (i+1) ),
-        source: vectorSource,
-        style: style
-      });
-
-      layers.push(geometryLayer);
-    }
-    
-    // add custom listener for map event: hmlrMapClickEvent
-    document.addEventListener('hmlrCheckBoxEvent', (event) => {
-      const message = event.detail.message;
-      const id = message.id;
-      const isChecked = message.isChecked;
-
-      // get layer sn set visibilty
-      const layer = getLayerByName(id);    
-      layer.setVisible(isChecked);
-    });
-  }
-
-  const map = new ol.Map({
-    target: target,
-    layers: layers,
-    view: new ol.View({
-      projection: 'EPSG:27700',
-      center: coords,
-      zoom: zoom
-    })
-  });
-
-  // store the map ref
-  const mapElement = document.getElementById(target);
-  mapElement._olMap = map;
-
-  // once the map has been created add the boundaries
-  if(layerSettings){
-    for( i=0; i<layerSettings.length; i++)
-    {
-      if (layerSettings[i].path_to_geometry) {
-        const index = layerSettings[i].geometry_index || null;
-        addBoundary(layerSettings[i].path_to_geometry, i+1, index); // account for the base layer source
-        if (layerSettings[i].interactive) {
-          addHover(map);
-        } 
-      }
-    }
-  }
-
-  // keep this addBoundary within the main createMap function scope
-  async function addBoundary(path_to_geometry, layerCount, idx) {
-    // get the source to load the polygons into 
-    const source = map.getLayers().item(layerCount).getSource();
-    const view = map.getView();
-    const center = view.getCenter();
-
-    // Function to load polygons from external file
-    try {
-      const response = await fetch(path_to_geometry);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      // add features from GeoJSON
-      let geojsonData = await response.json();
-      if (idx){
-        geojsonData = geojsonData.features[ idx ];
-      }
-      const features = new ol.format.GeoJSON().readFeatures(geojsonData);
-
-      source.addFeatures(features);
-
-      // if there are coords (not the default 248050, 53750), use those
-      if (center && (center[0] !== "248050" && center[1] != "53750")) {
-        view.setCenter(center);
-      } else {
-        // fit view to loaded features
-        const extent = source.getExtent();
-        // center the view on the new geometry
-        // extent.some(coord => isFinite(coord)) tests two corner node coords
-        if (extent && extent.some(coord => isFinite(coord))) {
-          map.getView().fit(extent, {
-            padding: [20, 20, 20, 20],
-            maxZoom: 18
-          });
-          if (zoom !== 15) {
-            view.setZoom(zoom);
-          }
-        }
-      }
-      //console.log(`Loaded ${features.length} polygons from ${path_to_geometry}`);
-    } catch (error) {
-      console.error('Error loading polygons:', error);
-    } finally {
-      //loadingElement.classList.remove('show');
-    }
-  }
-
-  function getStyle(styleObj) {
-    let width = 3;
-    let lineDash = null;
-
-    const blue_color = '#003078';
-    const green_color = '#00703c';
-    const red_color = '#d4351c';
-    const hidden_color = '#d4351c00';
-
-    let stroke_color = blue_color;
-    let fill_color = stroke_color + '33'; // use RGBA Color Space
-
-    if (styleObj) {
-      // check for style sets as a string (blue, red or green)
-      if (typeof styleObj === "string") {
-        styleObj = styleObj.toUpperCase();
-
-        if (styleObj.indexOf('RED') > -1) {
-          stroke_color = red_color;
-        } else if (styleObj.indexOf('GREEN') > -1) {
-          stroke_color = green_color;
-        } else {
-          stroke_color = blue_color;
-        }
-        // check for line style (dashed or dotted)
-        if (styleObj.indexOf('DASH') > -1) {
-          lineDash = [5, 5];
-        } else if (styleObj.indexOf('DOT') > -1) {
-          lineDash = [1, 5];
-        } else {
-          lineDash = null;
-        }
-
-        fill_color = stroke_color + '33'; // use RGBA Color Space
-
-        if (styleObj.indexOf('HIDDEN') > -1) {
-          stroke_color = hidden_color;
-          fill_color = hidden_color;
-        }
-      } else {
-        if (styleObj.fill) {
-          if (styleObj.fill.color) {
-            fill_color = styleObj.fill.color;
-          }
-        }
-        if (styleObj.stroke) {
-          if (styleObj.stroke.color) {
-            stroke_color = styleObj.stroke.color;
-          }
-          if (styleObj.stroke.width) {
-            width = styleObj.stroke.width;
-          }
-          if (styleObj.stroke.lineDash) {
-            lineDash = styleObj.stroke.lineDash;
-          }
-        }
-      }
-    }
-
-    // set default style if none has been passed in
-    let style = new ol.style.Style({
-      fill: new ol.style.Fill({
-        color: fill_color
-      }),
-      stroke: new ol.style.Stroke({
-        color: stroke_color,
-        lineDash: lineDash,
-        width: width
-      })
-    });
-
-
-    if (styleObj) {
-      if (typeof styleObj === "string") {
-        if (styleObj.indexOf('HATCHED') > -1) {
-          console.log('got hatched');
-
-          var hatched_fill = new ol.style.Fill();
-          hatched_fill.setColor(hatch_pattern(stroke_color));
-            
-          style = new ol.style.Style({
-            fill: hatched_fill,
-            stroke: new ol.style.Stroke({
-              color: stroke_color,
-              width: 2,
-              lineDash: [5, 5]
-            })
-          })
-
-        }
-      }
-    }
-
-    return style
-  }
-
-  function addHover(map) {
-    // Add interaction for hover effects
-    let hoveredFeature = null;
-    const mapElement = map.getTargetElement();
-
-    map.on('pointermove', function (evt) {
-      const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
-        return feature;
-      });
-
-      if (feature !== hoveredFeature) {
-        // Reset previous hovered feature to default style
-        if (hoveredFeature) {
-          hoveredFeature.setStyle(null); // Reset to layer default style
-        }
-
-        // Set new hovered feature
-        if (feature) {
-          feature.setStyle(hoverStyle);
-          mapElement.style.cursor = 'pointer';
-        } else {
-          mapElement.style.cursor = '';
-        }
-
-        hoveredFeature = feature;
-      }
-    });
-
-    // Add explicit mouse leave handling for map container
-    mapElement.addEventListener('mouseleave', function () {
-      if (hoveredFeature) {
-        hoveredFeature.setStyle(null); // Reset to layer default style
-        hoveredFeature = null;
-        mapElement.style.cursor = '';
-      }
-    });
-
-    // Add click handler for feature info
-    map.on('click', function (evt) {
-      const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
-        return feature;
-      });  
-
-      if (feature) {
-        // dispatch a custom event
-        const mapEvent = new CustomEvent('hmlrMapClickEvent', {
-          detail: { message: feature }
-        });
-        document.dispatchEvent(mapEvent);
-      }
-    });
-  }
-
-  function getLayerByName(name) {
-    return map.getLayers().getArray().find(layer => layer.get('name') === name);
-  }
 }
 
-var hatch_pattern = function (colour) {
-  var canvas = document.createElement('canvas');
-  var context = canvas.getContext('2d');
+// ============================================================================
+// STYLE UTILITIES
+// ============================================================================
 
-  var pixel_ratio = devicePixelRatio;
-  var width = 16 * pixel_ratio;
-  var height = 16 * pixel_ratio;
-  var offset = width * 0.93;
+/**
+ * Create a hatched pattern fill
+ * @param {string} color - The color for the pattern
+ * @returns {CanvasPattern} Canvas pattern for hatched fill
+ */
+function createHatchPattern(color) {
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  const pixelRatio = devicePixelRatio;
+  const width = 16 * pixelRatio;
+  const height = 16 * pixelRatio;
+  const offset = width * 0.93;
 
   canvas.width = width;
   canvas.height = height;
-  context.strokeStyle = colour;
+  context.strokeStyle = color;
   context.lineWidth = 1;
 
   context.beginPath();
-  //draw the diagonal line
   context.moveTo(0, 0);
   context.lineTo(width, height);
-  //Fill in the top right of the corner so adjacent squares don't look strange
   context.moveTo(width - offset, height);
   context.lineTo(0, offset);
-  //Fill in the top right of the corner so adjacent squares don't look strange
   context.moveTo(width, height - offset);
   context.lineTo(offset, 0);
-  context.stroke()
+  context.stroke();
+
   return context.createPattern(canvas, 'repeat');
-};
+}
 
+/**
+ * Parse string-based style configuration
+ * @param {string} styleString - Style configuration string (e.g., "RED-DASHED")
+ * @returns {Object} Parsed style properties
+ */
+function parseStyleString(styleString) {
+  const upperStyle = styleString.toUpperCase();
+  const config = {
+    strokeColor: COLORS.BLUE,
+    fillColor: null,
+    lineDash: null,
+    isHatched: false,
+    isHidden: false
+  };
 
-document.addEventListener("DOMContentLoaded", () => {
-  // get all map class tags
-  let maps = document.getElementsByClassName('hmlr-map');
-  let options = {};
+  // Parse color
+  if (upperStyle.includes('RED')) {
+    config.strokeColor = COLORS.RED;
+  } else if (upperStyle.includes('GREEN')) {
+    config.strokeColor = COLORS.GREEN;
+  }
 
-  // loop thru and assign a target id then get data attributes and call the map function
-  for (let i = 0; i < maps.length; i++) {
-    let target = 'map' + (i + 1);
-    let zoom = maps[i].dataset.zoom;
-    let tile_url = maps[i].dataset.tileurl;
+  // Parse line style
+  if (upperStyle.includes('DASH')) {
+    config.lineDash = [5, 5];
+  } else if (upperStyle.includes('DOT')) {
+    config.lineDash = [1, 5];
+  }
 
-    let coords = JSON.parse(maps[i].dataset.coords);
-    if (coords.length == 0) {
-      coords = null;
-    }
-    let layers = null;
-    if (maps[i].dataset.layers.length > 0) {
-      layers = JSON.parse(maps[i].dataset.layers);
-    }
+  // Parse special styles
+  if (upperStyle.includes('HATCHED')) {
+    config.isHatched = true;
+  }
 
-    maps[i].setAttribute('id', target);
+  if (upperStyle.includes('HIDDEN')) {
+    config.strokeColor = COLORS.HIDDEN;
+    config.fillColor = COLORS.HIDDEN;
+    config.isHidden = true;
+  }
 
-    options.coords = coords;
-    options.zoom = zoom;
-    options.tile_url = tile_url;
-    options.layers = layers;
+  if (!config.isHidden) {
+    config.fillColor = config.strokeColor + DEFAULTS.OPACITY;
+  }
 
-    createMap(target, options);
+  return config;
+}
 
-    const checkboxes = document.getElementsByClassName('govuk-checkboxes__input');
-    Array.from(checkboxes).forEach(checkbox => {
-      checkbox.addEventListener('change', function () {
-        const message = {
-          id: this.id,
-          isChecked: this.checked
-        };
-        // dispatch a custom event
-        const clickEvent = new CustomEvent('hmlrCheckBoxEvent', {
-          detail: { message: message }
-        });
-        document.dispatchEvent(clickEvent);
-      });
+/**
+ * Create OpenLayers style from configuration
+ * @param {string|Object} styleConfig - Style configuration
+ * @returns {ol.style.Style} OpenLayers style object
+ */
+function createStyle(styleConfig) {
+  let strokeColor = COLORS.BLUE;
+  let fillColor = strokeColor + DEFAULTS.OPACITY;
+  let width = DEFAULTS.STROKE_WIDTH;
+  let lineDash = null;
+  let isHatched = false;
+
+  if (!styleConfig) {
+    return new ol.style.Style({
+      fill: new ol.style.Fill({ color: fillColor }),
+      stroke: new ol.style.Stroke({ color: strokeColor, width, lineDash })
     });
   }
-})
+
+  // Handle string-based style configuration
+  if (typeof styleConfig === 'string') {
+    const parsed = parseStyleString(styleConfig);
+    strokeColor = parsed.strokeColor;
+    fillColor = parsed.fillColor;
+    lineDash = parsed.lineDash;
+    isHatched = parsed.isHatched;
+
+    if (isHatched) {
+      const hatchedFill = new ol.style.Fill();
+      hatchedFill.setColor(createHatchPattern(strokeColor));
+      
+      return new ol.style.Style({
+        fill: hatchedFill,
+        stroke: new ol.style.Stroke({
+          color: strokeColor,
+          width: DEFAULTS.HOVER_STROKE_WIDTH,
+          lineDash: [5, 5]
+        })
+      });
+    }
+  } 
+  // Handle object-based style configuration
+  else if (typeof styleConfig === 'object') {
+    if (styleConfig.fill?.color) {
+      fillColor = styleConfig.fill.color;
+    }
+    if (styleConfig.stroke?.color) {
+      strokeColor = styleConfig.stroke.color;
+    }
+    if (styleConfig.stroke?.width) {
+      width = styleConfig.stroke.width;
+    }
+    if (styleConfig.stroke?.lineDash) {
+      lineDash = styleConfig.stroke.lineDash;
+    }
+  }
+
+  return new ol.style.Style({
+    fill: new ol.style.Fill({ color: fillColor }),
+    stroke: new ol.style.Stroke({ color: strokeColor, width, lineDash })
+  });
+}
+
+/**
+ * Create hover style
+ * @returns {ol.style.Style} Hover style object
+ */
+function createHoverStyle() {
+  return new ol.style.Style({
+    fill: new ol.style.Fill({ color: 'rgba(0,48,120,0.3)' }),
+    stroke: new ol.style.Stroke({ color: 'rgba(0,48,120,1)', width: 2 })
+  });
+}
+
+// ============================================================================
+// LAYER MANAGEMENT
+// ============================================================================
+
+/**
+ * Create base tile layer
+ * @param {string} tileUrl - Optional custom tile URL
+ * @returns {ol.layer.Tile} Base tile layer
+ */
+function createBaseLayer(tileUrl) {
+  const source = tileUrl 
+    ? new ol.source.XYZ({ url: tileUrl })
+    : new ol.source.OSM();
+
+  return new ol.layer.Tile({ source });
+}
+
+/**
+ * Create vector layers from layer settings
+ * @param {Array} layerSettings - Array of layer configuration objects
+ * @returns {Array<ol.layer.Vector>} Array of vector layers
+ */
+function createVectorLayers(layerSettings) {
+  if (!layerSettings || !Array.isArray(layerSettings)) {
+    return [];
+  }
+
+  return layerSettings.map((config, index) => {
+    const style = createStyle(config.style);
+    const vectorSource = new ol.source.Vector();
+    
+    return new ol.layer.Vector({
+      name: `LAYER_${index + 1}`,
+      source: vectorSource,
+      style
+    });
+  });
+}
+
+// ============================================================================
+// GEOMETRY LOADING
+// ============================================================================
+
+/**
+ * Load boundary geometry from external file
+ * @param {string} path - Path to GeoJSON file
+ * @param {ol.source.Vector} source - Vector source to add features to
+ * @param {number|null} geometryIndex - Optional specific geometry index
+ * @returns {Promise<Array>} Promise resolving to loaded features
+ */
+async function loadBoundaryGeometry(path, source, geometryIndex = null) {
+  try {
+    const response = await fetch(path);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    let geojsonData = await response.json();
+    
+    if (geometryIndex !== null && geojsonData.features) {
+      geojsonData = geojsonData.features[geometryIndex];
+    }
+
+    const features = new ol.format.GeoJSON().readFeatures(geojsonData);
+    source.addFeatures(features);
+
+    return features;
+  } catch (error) {
+    console.error(`Error loading geometry from ${path}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Check if coordinates are default values
+ * @param {Array<number>} coords - Coordinates to check
+ * @returns {boolean} True if coordinates are default
+ */
+function areDefaultCoords(coords) {
+  return coords[0] === DEFAULTS.COORDS[0] && coords[1] === DEFAULTS.COORDS[1];
+}
+
+/**
+ * Fit map view to layer extent
+ * @param {ol.Map} map - OpenLayers map instance
+ * @param {ol.source.Vector} source - Vector source with features
+ * @param {number} zoom - Desired zoom level
+ */
+function fitViewToExtent(map, source, zoom) {
+  const extent = source.getExtent();
+  
+  if (extent && extent.some(coord => isFinite(coord))) {
+    map.getView().fit(extent, {
+      padding: DEFAULTS.PADDING,
+      maxZoom: DEFAULTS.MAX_ZOOM
+    });
+
+    if (zoom !== DEFAULTS.ZOOM) {
+      map.getView().setZoom(zoom);
+    }
+  }
+}
+
+// ============================================================================
+// INTERACTION HANDLERS
+// ============================================================================
+
+/**
+ * Add hover interaction to map
+ * @param {ol.Map} map - OpenLayers map instance
+ */
+function addHoverInteraction(map) {
+  let hoveredFeature = null;
+  const mapElement = map.getTargetElement();
+  const hoverStyle = createHoverStyle();
+
+  // Pointer move handler
+  map.on('pointermove', (evt) => {
+    const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
+
+    if (feature !== hoveredFeature) {
+      if (hoveredFeature) {
+        hoveredFeature.setStyle(null);
+      }
+
+      if (feature) {
+        feature.setStyle(hoverStyle);
+        mapElement.style.cursor = 'pointer';
+      } else {
+        mapElement.style.cursor = '';
+      }
+
+      hoveredFeature = feature;
+    }
+  });
+
+  // Mouse leave handler
+  mapElement.addEventListener('mouseleave', () => {
+    if (hoveredFeature) {
+      hoveredFeature.setStyle(null);
+      hoveredFeature = null;
+      mapElement.style.cursor = '';
+    }
+  });
+
+  // Click handler
+  map.on('click', (evt) => {
+    const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
+
+    if (feature) {
+      const mapEvent = new CustomEvent(EVENTS.MAP_CLICK, {
+        detail: { message: feature }
+      });
+      document.dispatchEvent(mapEvent);
+    }
+  });
+}
+
+/**
+ * Setup checkbox event listener for layer visibility
+ * @param {ol.Map} map - OpenLayers map instance
+ */
+function setupCheckboxListener(map) {
+  const getLayerByName = (name) => {
+    return map.getLayers().getArray().find(layer => layer.get('name') === name);
+  };
+
+  document.addEventListener(EVENTS.CHECKBOX, (event) => {
+    const { id, isChecked } = event.detail.message;
+    const layer = getLayerByName(id);
+    
+    if (layer) {
+      layer.setVisible(isChecked);
+    }
+  });
+}
+
+// ============================================================================
+// MAP CREATION
+// ============================================================================
+
+/**
+ * Create and initialize map instance
+ * @param {string} target - Target element ID
+ * @param {Object} options - Map configuration options
+ * @param {Array<number>} options.coords - Initial center coordinates
+ * @param {number} options.zoom - Initial zoom level
+ * @param {string} options.tile_url - Custom tile URL
+ * @param {Array} options.layers - Layer configuration
+ * @returns {ol.Map} OpenLayers map instance
+ */
+async function createMap(target, options = {}) {
+  // Handle coords: use defaults if not provided, null, or empty array
+  let coords = options.coords;
+  if (!coords || (Array.isArray(coords) && coords.length === 0)) {
+    coords = DEFAULTS.COORDS;
+  }
+
+  const {
+    zoom = DEFAULTS.ZOOM,
+    tile_url = '',
+    layers: layerSettings = null
+  } = options;
+
+  console.log('Creating map:', target, coords, zoom);
+
+  // Initialize projection
+  initializeProjection();
+
+  // Create layers
+  const layers = [createBaseLayer(tile_url)];
+  const vectorLayers = createVectorLayers(layerSettings);
+  layers.push(...vectorLayers);
+
+  // Create map
+  const map = new ol.Map({
+    target,
+    layers,
+    view: new ol.View({
+      projection: PROJECTION.EPSG_27700,
+      center: coords,
+      zoom
+    })
+  });
+
+  // Store map reference on element
+  const mapElement = document.getElementById(target);
+  if (mapElement) {
+    mapElement._olMap = map;
+  }
+
+  // Setup checkbox listener if layers exist
+  if (layerSettings) {
+    setupCheckboxListener(map);
+  }
+
+  // Load geometries and setup interactions
+  if (layerSettings && Array.isArray(layerSettings)) {
+    let hasInteractiveLayer = false;
+
+    for (let i = 0; i < layerSettings.length; i++) {
+      const config = layerSettings[i];
+      
+      if (config.path_to_geometry) {
+        const layerIndex = i + 1; // Account for base layer
+        const layer = map.getLayers().item(layerIndex);
+        const source = layer.getSource();
+        const geometryIndex = config.geometry_index ?? null;
+
+        try {
+          await loadBoundaryGeometry(config.path_to_geometry, source, geometryIndex);
+
+          // Fit view if using default coordinates
+          if (areDefaultCoords(coords)) {
+            fitViewToExtent(map, source, zoom);
+          }
+        } catch (error) {
+          console.error(`Failed to load geometry for layer ${layerIndex}:`, error);
+        }
+
+        if (config.interactive) {
+          hasInteractiveLayer = true;
+        }
+      }
+    }
+
+    // Add hover interaction if any layer is interactive
+    if (hasInteractiveLayer) {
+      addHoverInteraction(map);
+    }
+  }
+
+  return map;
+}
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+/**
+ * Initialize all maps on the page
+ */
+function initializeMaps() {
+  const mapElements = document.getElementsByClassName(SELECTORS.MAP_CLASS);
+
+  Array.from(mapElements).forEach((element, index) => {
+    const target = `map${index + 1}`;
+    element.setAttribute('id', target);
+
+    // Parse coords - handle null, empty array, or invalid JSON
+    let coords = null;
+    try {
+      const coordsData = element.dataset.coords;
+      if (coordsData) {
+        const parsed = JSON.parse(coordsData);
+        // Only use parsed coords if it's a non-empty array
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          coords = parsed;
+        }
+      }
+    } catch (error) {
+      console.warn(`Invalid coords data for ${target}:`, error);
+    }
+
+    const options = {
+      coords,
+      zoom: parseInt(element.dataset.zoom) || DEFAULTS.ZOOM,
+      tile_url: element.dataset.tileurl || '',
+      layers: element.dataset.layers ? JSON.parse(element.dataset.layers) : null
+    };
+
+    createMap(target, options);
+  });
+}
+
+/**
+ * Initialize checkbox event dispatchers
+ */
+function initializeCheckboxes() {
+  const checkboxes = document.getElementsByClassName(SELECTORS.CHECKBOX_CLASS);
+
+  Array.from(checkboxes).forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const clickEvent = new CustomEvent(EVENTS.CHECKBOX, {
+        detail: {
+          message: {
+            id: this.id,
+            isChecked: this.checked
+          }
+        }
+      });
+      document.dispatchEvent(clickEvent);
+    });
+  });
+}
+
+// ============================================================================
+// DOM READY
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  initializeMaps();
+  initializeCheckboxes();
+});
+
+// ============================================================================
+// EXPORTS (if using modules)
+// ============================================================================
+
+// Uncomment if using ES6 modules:
+// export { createMap, initializeMaps, initializeCheckboxes };
