@@ -91,7 +91,7 @@ function createHatchPattern(color) {
  * @returns {Object} Parsed style properties
  */
 function parseStyleString(styleString) {
-  const upperStyle = styleString.toUpperCase();
+  const uppercaseStyle = styleString.toUpperCase();
   const config = {
     strokeColor: COLORS.BLUE,
     fillColor: null,
@@ -101,25 +101,25 @@ function parseStyleString(styleString) {
   };
 
   // Parse color
-  if (upperStyle.includes('RED')) {
+  if (uppercaseStyle.includes('RED')) {
     config.strokeColor = COLORS.RED;
-  } else if (upperStyle.includes('GREEN')) {
+  } else if (uppercaseStyle.includes('GREEN')) {
     config.strokeColor = COLORS.GREEN;
   }
 
   // Parse line style
-  if (upperStyle.includes('DASH')) {
+  if (uppercaseStyle.includes('DASH')) {
     config.lineDash = [5, 5];
-  } else if (upperStyle.includes('DOT')) {
+  } else if (uppercaseStyle.includes('DOT')) {
     config.lineDash = [1, 5];
   }
 
   // Parse special styles
-  if (upperStyle.includes('HATCHED')) {
+  if (uppercaseStyle.includes('HATCHED')) {
     config.isHatched = true;
   }
 
-  if (upperStyle.includes('HIDDEN')) {
+  if (uppercaseStyle.includes('HIDDEN')) {
     config.strokeColor = COLORS.HIDDEN;
     config.fillColor = COLORS.HIDDEN;
     config.isHidden = true;

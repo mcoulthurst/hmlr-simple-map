@@ -1,49 +1,357 @@
-# GDS Prototype kit: Map component
+# HMLR Simple Map Component
 
-## EXPERIMENTAL
+A flexible, OpenLayers-based mapping component for the GOV.UK Prototype Kit, with built-in support for British National Grid (BNG) projection and GeoJSON boundary visualization.
 
-Work in progress: a simple map component.
+## Features
 
-To run locally, download this repo and use `npm pack` to create a local package (`hmlr-simple-map-1.0.0.tgz`), or use the pre-packed [version](https://github.com/mcoulthurst/hmlr-simple-map/blob/2b95c119665736f2450a37209d6d18e9cb225e38/hmlr-simple-map-1.0.0.tgz) in the repo.
+- **British National Grid (EPSG:27700)** projection support
+- **GeoJSON boundary** loading and visualization
+- **Customizable styling** with preset and custom color schemes
+- **Multiple layers** with individual styling and visibility controls
+- **Interactive features** with hover effects and click events
+- **Flexible sizing** and positioning options
+- **Feature selection** from GeoJSON collections
 
-Copy the component (the newly created TGZ file) into your actual prototype. Install the component into the prototype using a file path location, eg
+## Installation
 
-`npm install hmlr-simple-map-1.0.0.tgz`
+### Local Installation
 
-In the prototype html page, import the component:
-`{% from "hmlrSimpleMap.njk" import hmlrSimpleMap %}`
+1. Download this repository
+2. Create a local package:
+   ```
+   npm pack
+   ```
+3. Copy the generated `hmlr-simple-map-1.0.0.tgz` file to your prototype directory
+4. Install the package:
+   ```
+   npm install hmlr-simple-map-1.0.0.tgz
+   ```
 
-Reference the map component using 
+Alternatively, use the pre-packed version from the repository.
+
+## Usage
+
+### Import the Component
+
+In your Nunjucks template:
+
+```njk
+{% from "hmlrSimpleMap.njk" import hmlrSimpleMap %}
 ```
-    {{ hmlrSimpleMap({
-      alt: "Map of Liskeard",
-      caption: "Example map component with custom size. View is set to specific center point and zoom level",
-      coords: "225000, 65000",
-      zoom: 16,
-      height: "400px",
-      width: "620px",
-      path_to_geometry: "/public/boundary.json",
-      style: "RED DASH"
-    }) }}
+
+### Basic Example
+
+```njk
+{{ hmlrSimpleMap({
+  alt: "Map of Plymouth",
+  caption: "Example map with default settings"
+}) }}
 ```
 
-All the properties are optional, with defaults for coordinates, zoom level, height and width.
-`path_to_geometry` is used to load in geojson (using BNG coordinates) from within the prototype. The map will be centered on the extent automatically. If co-ordinates are also included, then the map will be centered on these. 
+## Configuration Options
 
-The `style` option can be used to set a one of the pre-defined colours (RED, GREEN, BLUE) and line style (DASH, DOT) or a custom style can be used to apply a fill and stroke to the imported geometry, using the OpenLayers styling eg
+All parameters are **optional** with defaults provided.
+
+### Basic Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `alt` | String | - | Alternative text for accessibility |
+| `caption` | String | - | Caption displayed below the map |
+| `coords` | String | `248050, 53750` | Center coordinates in BNG format (Easting, Northing) |
+| `zoom` | Number | `15` | Initial zoom level (1-18) |
+| `height` | String | `500px` | Map height (any valid CSS value) |
+| `width` | String | `100%` | Map width (any valid CSS value) |
+
+### Layer Configuration
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `layers` | Array | `null` | Array of layer configuration objects (see Layer Options below) |
+| `layerControls` | String | `"false"` | Enable layer visibility checkboxes (`"true"` or `"false"`) |
+| `tile_url` | String | OSM tiles | Custom base map tile URL (e.g., CartoDB, Mapbox) |
+
+### Layer Options
+
+Each layer in the `layers` array can have the following properties:
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `path_to_geometry` | String | - | Path to GeoJSON file (required for each layer) |
+| `description` | String | Filename | Label for layer control checkbox |
+| `geometry_index` | Number | `null` | Select specific feature from collection (0-based index) |
+| `interactive` | String | `"false"` | Enable click/hover interactions (`"true"` or `"false"`) |
+| `style` | String/Object | `"BLUE"` | Layer styling (see Styling Options below) |
+
+## Styling Options
+
+### Preset String Styles
+
+Combine color and line style keywords (case-insensitive):
+
+**Colors:**
+- `"RED"` - GOV.UK red (#d4351c)
+- `"GREEN"` - GOV.UK green (#00703c)
+- `"BLUE"` - GOV.UK blue (#003078)
+
+**Line Styles:**
+- `"DASH"` - Dashed line [5, 5]
+- `"DOT"` - Dotted line [1, 5]
+
+**Special Styles:**
+- `"HIDDEN"` - Invisible geometry (useful for interactive-only layers)
+- `"HATCHED"` - Diagonal line pattern fill (experimental)
+
+**Examples:**
+```njk
+style: "RED DASH"
+style: "GREEN"
+style: "BLUE DOT"
+style: "green HATCHED"
+style: "hidden"
 ```
-  style: {
-    fill: {
-      color: "#d4351c33"
-    },
-    stroke: {
-      color: "#d4351c",
-      width: 0.5,
-      lineDash: [5, 5]
-    }
+
+### Custom Object Styles
+
+For complete control, use an object with OpenLayers styling properties:
+
+```njk
+style: {
+  fill: {
+    color: "#d4351c33"  // RGBA hex: color + alpha (33 = 20% opacity)
+  },
+  stroke: {
+    color: "#d4351c",
+    width: 2,
+    lineDash: [4, 4]  // [dash length, gap length]
   }
-  ```
+}
+```
 
-  where line dash is the line length then the gap length. 
+**Color Format:** Use RGBA hex format for transparency: `#RRGGBBAA`
+- Example: `#d4351c33` = red with 20% opacity (33 hex = 51 decimal = 20%)
+- [Hex to Percentage Converter](https://www.jmiron.com/percent-to-hex-converter)
 
-  There is an test [prototype](https://github.com/LandRegistry/llc-map-prototype) showing the installed component, with a working example of the [map page](https://github.com/LandRegistry/llc-map-prototype/blob/4e3851591495befc5da82101700135545b0f0d75/app/views/map-component.html).
+## Examples
+
+### Example 1: Default map
+
+```njk
+{{ hmlrSimpleMap({
+  alt: "Map of Plymouth",
+  caption: "Example map with default settings"
+}) }}
+```
+
+### Example 2: Custom size and location
+
+```njk
+{{ hmlrSimpleMap({
+  alt: "Map of Cornwall, showing a field north of Liskeard",
+  caption: "Custom size, coordinates and zoom",
+  coords: "225000, 65000",
+  zoom: 15,
+  height: "400px",
+  width: "620px"
+}) }}
+```
+
+### Example 3: Loading external geoJSON
+
+```njk
+{{ hmlrSimpleMap({
+  alt: "Map showing boundary data",
+  caption: "Loading external GeoJSON with auto-fit",
+  layers: [{
+    path_to_geometry: "/public/data/boundary.json"
+  }]
+}) }}
+```
+
+### Example 4: Custom styling
+
+```njk
+{{ hmlrSimpleMap({
+  alt: "Map with custom styled boundary",
+  caption: "Custom styling with dashed red line",
+  coords: "225000, 65000",
+  zoom: 15,
+  layers: [{
+    path_to_geometry: "/public/data/boundary.json",
+    style: {
+      fill: {
+        color: "#d4351c33"
+      },
+      stroke: {
+        color: "#d4351c",
+        width: 2,
+        lineDash: [4, 4]
+      }
+    }
+  }]
+}) }}
+```
+
+
+### Example 5: Selecting a single feature using geometry_index
+
+```njk
+{{ hmlrSimpleMap({
+  alt: "Single feature selection",
+  caption: "Selecting feature 3 from a collection",
+  layers: [{
+    path_to_geometry: "/public/data/fields.json",
+    geometry_index: 3,
+    style: "BLUE"
+  }],
+  width: "100%",
+  height: "390px"
+}) }}
+```
+
+### Example 6: Interactive hidden geometry
+
+```njk
+{{ hmlrSimpleMap({
+  alt: "Interactive map",
+  caption: "Hidden geometry with click events",
+  zoom: 15.5,
+  layers: [{
+    path_to_geometry: "/public/data/overlaps.geojson",
+    style: "hidden",
+    interactive: "true"
+  }]
+}) }}
+```
+
+### Example 7: Multiple layers with custom map tile and layer controls
+
+```njk
+{{ hmlrSimpleMap({
+  alt: "Multi-layer map",
+  caption: "Layered boundaries with visibility controls",
+  layerControls: "true",
+  layers: [
+    {
+      path_to_geometry: "/public/data/inspire_data.geojson",
+      description: "INSPIRE data",
+      interactive: "true",
+      style: {
+        fill: { color: "#4c2c9222" },
+        stroke: { color: "#4c2c9211", width: 0.5 }
+      }
+    },
+    {
+      path_to_geometry: "/public/data/layer1.geojson",
+      style: {
+        fill: { color: "#d4351c01" },
+        stroke: { color: "#d4351c", width: 2 }
+      }
+    },
+    {
+      path_to_geometry: "/public/data/layer2.geojson",
+      description: "Custom description",
+      style: {
+        fill: { color: "#00703c11" },
+        stroke: { color: "#00703c", width: 2 }
+      }
+    },
+    {
+      path_to_geometry: "/public/data/layer3.geojson",
+      description: "Blue boundary",
+      style: "BLUE"
+    }
+  ],
+  zoom: 14.5,
+  tile_url: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
+}) }}
+```
+
+### Example 8: Hatched fill 
+
+```njk
+{{ hmlrSimpleMap({
+  alt: "Map with hatched pattern",
+  caption: "Experimental canvas hatching",
+  layers: [{
+    path_to_geometry: "/public/data/layer1.geojson",
+    interactive: "true",
+    style: "green HATCHED"
+  }]
+}) }}
+```
+
+## Interactive Features
+
+### Click Events
+
+When a layer has `interactive: "true"`, clicking on features dispatches a custom event:
+
+```javascript
+document.addEventListener('hmlrMapClickEvent', (event) => {
+  const feature = event.detail.message;
+  console.log('Clicked feature:', feature);
+  
+  // Access feature properties
+  const properties = feature.values_;
+  console.log('Feature ID:', properties.INSPIREID);
+});
+```
+
+### Hover Effects
+
+Interactive layers automatically show:
+- Cursor change to pointer
+- Highlight styling on hover
+- Click handling
+
+## Coordinate System
+
+The component uses **British National Grid (BNG) / EPSG:27700**:
+
+- **Easting:** Horizontal position (typically 0-700000)
+- **Northing:** Vertical position (typically 0-1300000)
+- **Format:** `"easting, northing"` (e.g., `225000, 65000`)
+
+GeoJSON files must use BNG coordinates. The map automatically centers on loaded geometries if default coordinates are used.
+
+## GeoJSON Format
+
+The component expects standard GeoJSON with BNG coordinates:
+
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[...]]
+      },
+      "properties": {
+        "INSPIREID": 12345,
+        "name": "Property Name"
+      }
+    }
+  ]
+}
+```
+
+## Dependencies
+
+- OpenLayers
+- Proj4js
+- GOV.UK Frontend (for styling)
+
+## License
+
+This component is experimental and provided as-is for use with the GOV.UK Prototype Kit.
+
+## Support
+
+For issues and questions, refer to the [test prototype](https://github.com/LandRegistry/llc-map-prototype) which includes working examples.
+
+## Version
+
+Current version: 1.0.0 (Experimental)
