@@ -36,7 +36,8 @@ const EVENTS = {
 
 const SELECTORS = {
   MAP_CLASS: 'hmlr-map',
-  CHECKBOX_CLASS: 'govuk-checkboxes__input'
+  CHECKBOX_CLASS: 'govuk-checkboxes__input',
+  RADIO_CLASS: 'govuk-radios__input'
 };
 
 // ============================================================================
@@ -162,7 +163,7 @@ function createStyle(styleConfig) {
     if (isHatched) {
       const hatchedFill = new ol.style.Fill();
       hatchedFill.setColor(createHatchPattern(strokeColor));
-      
+
       return new ol.style.Style({
         fill: hatchedFill,
         stroke: new ol.style.Stroke({
@@ -172,7 +173,7 @@ function createStyle(styleConfig) {
         })
       });
     }
-  } 
+  }
   // Handle object-based style configuration
   else if (typeof styleConfig === 'object') {
     if (styleConfig.fill?.color) {
@@ -216,7 +217,7 @@ function createHoverStyle() {
  * @returns {ol.layer.Tile} Base tile layer
  */
 function createBaseLayer(tileUrl) {
-  const source = tileUrl 
+  const source = tileUrl
     ? new ol.source.XYZ({ url: tileUrl })
     : new ol.source.OSM();
 
@@ -236,7 +237,7 @@ function createVectorLayers(layerSettings) {
   return layerSettings.map((config, index) => {
     const style = createStyle(config.style);
     const vectorSource = new ol.source.Vector();
-    
+
     return new ol.layer.Vector({
       name: `LAYER_${index + 1}`,
       source: vectorSource,
@@ -265,7 +266,7 @@ async function loadBoundaryGeometry(path, source, geometryIndex = null) {
     }
 
     let geojsonData = await response.json();
-    
+
     if (geometryIndex !== null && geojsonData.features) {
       geojsonData = geojsonData.features[geometryIndex];
     }
@@ -297,7 +298,7 @@ function areDefaultCoords(coords) {
  */
 function fitViewToExtent(map, source, zoom) {
   const extent = source.getExtent();
-  
+
   if (extent && extent.some(coord => isFinite(coord))) {
     map.getView().fit(extent, {
       padding: DEFAULTS.PADDING,
@@ -365,24 +366,454 @@ function addHoverInteraction(map) {
   });
 }
 
+const getLayerByName = (map, name) => {
+  return map.getLayers().getArray().find(layer => layer.get('name') === name);
+};
+
 /**
  * Setup checkbox event listener for layer visibility
  * @param {ol.Map} map - OpenLayers map instance
  */
 function setupCheckboxListener(map) {
-  const getLayerByName = (name) => {
-    return map.getLayers().getArray().find(layer => layer.get('name') === name);
-  };
+
 
   document.addEventListener(EVENTS.CHECKBOX, (event) => {
     const { id, isChecked } = event.detail.message;
-    const layer = getLayerByName(id);
-    
+    const layer = getLayerByName(map, id);
+
     if (layer) {
       layer.setVisible(isChecked);
     }
   });
 }
+///------------------------- DRAW
+
+var hover_interaction = null;
+var current_interaction = null;
+
+var add_colour = '#003078';
+var edit_colour = '#00703c';//'#007A7C';
+var delete_colour = '#d4351c';//'#c41919';
+
+var add_fill = [0, 48, 120, 0.2];
+var edit_fill = [0, 112, 60, 0.2];
+var delete_fill = [212, 53, 28, 0.2];
+draw_layer_styles = {
+  /*ol, hatch_pattern*/
+  // Draw Interactions
+  DRAW: 0,
+  // Edit Interactions
+  EDIT: 1,
+  // Remove Interactions
+  REMOVE: 2,
+  // No Interactions Toggled
+  NONE: 3,
+  // Draw hole interaction
+  HOLE: 4,
+  // Hover
+  HOVER: 5,
+  // highlight charges
+  HIGHLIGHT: 6,
+  // Find charges
+  SHOW_CHARGE: 7,
+  // Fade back other charges when highlighting 
+  FADE: 8,
+  // Associated Feature Styles for mode
+  style: {
+
+
+    // DRAW | add
+    0: new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: add_fill
+      }),
+      stroke: new ol.style.Stroke({
+        color: add_colour,
+        //color: '#85994b',
+        width: 3,
+        lineDash: [5, 5]
+      }),
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({
+          color: add_colour
+        })
+      })
+    }),
+    // EDIT
+    1: [new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: edit_fill
+      }),
+      stroke: new ol.style.Stroke({
+        color: edit_colour,
+        width: 2,
+        /* lineDash: [5, 5] */
+      }),
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({
+          color: edit_colour
+        })
+      })
+    }),
+    new ol.style.Style({ // second style for the dots on the edge
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({
+          color: edit_colour
+        })
+      }),
+      geometry: function (feature) { // creating a custom geometry to draw points on
+        var coordinates = feature.getGeometry().getCoordinates().flat(1);
+        if (Array.isArray(coordinates)) {
+          return new ol.geom.MultiPoint(coordinates);
+        }
+      }
+    })],
+    // delete | remove
+    2: new ol.style.Style({
+      stroke: new ol.style.Stroke({
+        color: delete_colour,//[255, 0, 0, 0.8],
+        width: 2
+      }),
+      fill: new ol.style.Fill({
+        color: delete_fill//[255,0,0,0.4]
+      }),
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({
+          color: delete_colour
+        })
+      })
+    }),
+    // NONE
+    3: new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: [6, 88, 229, 0.1]
+      }),
+      stroke: new ol.style.Stroke({
+        color: '#0658e5',
+        width: 2,
+        /*  lineDash: [5, 5] */
+      }),
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({
+          color: '#0658e5'
+        })
+      })
+    }),
+    // HOLE
+    4: new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: add_fill
+      }),
+      stroke: new ol.style.Stroke({
+        color: add_colour,
+        width: 3,
+        lineDash: [1, 5]
+      }),
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({
+          color: add_colour
+        })
+      }),
+    }),
+    // HOVER
+    5: new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: 'rgba(0,48,120,0.3)'
+      }),
+      stroke: new ol.style.Stroke({
+        color: 'rgba(0,48,120,1)',
+        width: 2
+      }),
+      radius: 5
+    }),
+    // HIGHLIGHT
+    6: new ol.style.Style({
+      fill: new ol.style.Fill({
+        //color: 'rgba(0,48,120,0.3)'
+        color: [255, 221, 0, 0.6]
+      }),
+      stroke: new ol.style.Stroke({
+        //color: 'rgba(0,48,120,1)',
+        // color: '#b1b4b6',
+        color: '#003078',
+        width: 3
+      }),
+      radius: 5
+    }),
+    // SHOW_CHARGE
+    7: new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: [255, 255, 255, 0.25]
+      }),
+      stroke: new ol.style.Stroke({
+        color: '#0658e5',
+        width: 2
+      }),
+      radius: 5
+    }),
+    // FADE
+    8: new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: [255, 255, 255, 0]
+      }),
+      stroke: new ol.style.Stroke({
+        // color: '#b1b4b6',
+        color: [255, 255, 255, 0],
+        width: 1
+      }),
+      radius: 5
+    })
+
+
+
+  }
+}
+
+
+
+// Add Draw Interactions
+add_draw_interaction = function (map, type) {
+
+  console.log('add interaction', type);
+  const draw_layer = getLayerByName(map, "draw_layer");
+  const features = draw_layer.getSource().getFeatures();
+  const draw_features = new ol.Collection(features);
+
+  console.log(draw_layer);
+  console.log(draw_layer.getSource());
+  console.log(draw_layer.getSource().getFeatures());
+
+  // Remove the previous interaction
+  map.removeInteraction(current_interaction);
+  // remove the toggle of the draw control button as this is handled by the new radio buttons
+  // Toggle the draw control as needed
+  //var toggled_on = toggle_button(button);
+
+  //if (toggled_on) {
+  toggle_draw_layer_style(draw_layer, draw_layer_styles.DRAW);
+
+  if (type == "Circle") {
+    current_interaction = new ol.interaction.Draw({
+      features: draw_features,
+      type: type,
+      style: draw_layer_styles.style[draw_layer_styles.DRAW],
+      geometryFunction: ol.interaction.Draw.createRegularPolygon(30)
+    });
+
+  } else {
+
+    current_interaction = new ol.interaction.Draw({
+      features: draw_features,
+      type: type,
+      style: draw_layer_styles.style[draw_layer_styles.DRAW],
+      geometryFunction: function (coords, geometry) {
+        /* Callback to set drawing to false if all point removed and prevent
+        calls to removeLastPoint when there's no points left to undo */
+        if (type === "LineString") {
+          if (!geometry) {
+            geometry = new ol.geom.LineString([]);
+          }
+          geometry.setCoordinates(coords);
+          //MAP_UNDO.drawing = coords.length > 1;
+        } else if (type === "Point") {
+          if (!geometry) {
+            geometry = new ol.geom.Point([]);
+          }
+          geometry.setCoordinates(coords);
+        } else if (type === "Polygon") {
+          if (!geometry) {
+            geometry = new ol.geom.Polygon([]);
+          }
+          geometry.setCoordinates([coords[0].concat([coords[0][0]])]);
+          //MAP_UNDO.drawing = coords[0].length > 1;
+        }
+
+        return geometry;
+      }
+    });
+  }
+
+  current_interaction.on('drawend', function (event) {
+    const feature = event.feature;
+    console.log("__________ENDS___________")
+    console.log(feature)
+
+    const draw_layer = getLayerByName(map, "draw_layer");
+    console.log(draw_layer);
+    const source = draw_layer.getSource();
+    source.addFeature(feature);
+    // Or add to a specific source
+    //source.addFeature(feature);
+    event.feature.setProperties({
+      'id': Date.now()
+    });
+  });
+
+  current_interaction.on('drawstart', function (event) {
+    //MAP_UNDO.store_state();
+  });
+
+  current_interaction.on('drawend', function (event) {
+    //MAP_UNDO.drawing = false;
+  });
+
+  map.addInteraction(current_interaction);
+  /* if (vectorControls.snap_to_enabled) {
+      map.addInteraction(snap_to_interaction)
+  } */
+  //}
+};
+
+
+/**
+ * Set drawing mode based on radio controls elsewhere on page
+ * @param {ol.Map} map - OpenLayers map instance
+ */
+function setMode(map, modeType) {
+  map.removeInteraction(hover_interaction);
+  const draw_layer = getLayerByName(map, "draw_layer");
+  console.log(modeType);
+
+  switch (modeType) {
+    case 'draw-area':
+      map.removeInteraction(current_interaction);
+      //MASTER_MAP_VECTOR_LAYER.enable();
+      toggle_draw_layer_style(draw_layer, draw_layer_styles.DRAW);
+      add_draw_interaction(map, "Polygon");
+      return;
+
+    case 'add-circle':
+      map.removeInteraction(current_interaction);
+      //MASTER_MAP_VECTOR_LAYER.enable();
+      toggle_draw_layer_style(draw_layer, draw_layer_styles.DRAW);
+      add_draw_interaction(map, "Circle");
+      return;
+
+    case 'add-point':
+
+      map.removeInteraction(current_interaction);
+      //MASTER_MAP_VECTOR_LAYER.enable();
+      toggle_draw_layer_style(draw_layer, draw_layer_styles.DRAW);
+
+      add_draw_interaction(map, "Point");
+      return;
+
+    case 'add-line':
+      map.removeInteraction(current_interaction);
+      //MASTER_MAP_VECTOR_LAYER.enable();
+      toggle_draw_layer_style(draw_layer, draw_layer_styles.DRAW);
+      add_draw_interaction(map, "LineString");
+      return;
+
+    case 'select-area':
+      //$('.center').removeClass('govuk-visually-hidden');
+      map.removeInteraction(current_interaction);
+      //MASTER_MAP_VECTOR_LAYER.enable();
+      toggle_draw_layer_style(draw_layer, draw_layer_styles.DRAW);
+      current_interaction = new ol.interaction.Select({
+        layers: [MASTER_MAP_VECTOR_LAYER.layer],
+        style: draw_layer_styles.style[draw_layer_styles.DRAW]
+      });
+
+      // ADD hover functionality
+      hover_interaction = new ol.interaction.Select({
+        condition: ol.events.condition.pointerMove,
+        style: draw_layer_styles.style[draw_layer_styles.HOVER]
+      });
+      map.addInteraction(hover_interaction);
+
+      current_interaction.getFeatures().on('add', function (event) {
+        MAP_UNDO.store_state();
+        feature = event.target.item(0).clone();
+        if (feature) {
+          geometry = feature.getGeometry();
+          //Convert multi polygons to features
+          if (geometry instanceof ol.geom.MultiPolygon) {
+            geometry.getPolygons().forEach(function (geometry) {
+              addGeometryToMap(geometry)
+            })
+          }
+          else {
+            addGeometryToMap(geometry)
+          }
+        }
+      });
+
+      vectorControls.copy_enabled = true;
+      map.addInteraction(current_interaction);
+      return;
+
+    case 'edit-area':
+      map.removeInteraction(current_interaction);
+      toggle_draw_layer_style(draw_layer, draw_layer_styles.EDIT);
+      //toggle_draw_layer_style => MAP_CONFIG.draw_layer.setStyle(pattern);
+      current_interaction = new ol.interaction.Modify({
+        features: draw_features,
+        style: draw_layer_styles.style[draw_layer_styles.EDIT]
+      });
+
+      map.addInteraction(current_interaction);
+      //$("#" + editButtonId).trigger("edit:toggled");
+      if (vectorControls.snap_to_enabled) {
+        map.addInteraction(snap_to_interaction)
+      }
+
+      current_interaction.on('modifystart', function (event) {
+        MAP_UNDO.store_state();
+      });
+
+      return;
+
+    case 'delete-area':
+      //$('.center').removeClass('govuk-visually-hidden');
+      map.removeInteraction(current_interaction);
+
+      toggle_draw_layer_style(draw_layer, draw_layer_styles.REMOVE);
+
+      current_interaction = new ol.interaction.Select({
+        layers: [MAP_CONFIG.draw_layer]
+      });
+
+      current_interaction.getFeatures().on('add', function (event) {
+        var feature_id = event.element.getProperties().id;
+
+        remove_selected_feature(feature_id);
+        current_interaction.getFeatures().clear();
+      });
+
+      map.addInteraction(current_interaction)
+      return;
+
+
+  }
+
+};
+
+
+function toggle_draw_layer_style(draw_layer, style) {
+  console.log("current_style", style);
+  // style is one of 4: DRAW, EDIT, REMOVE and NONE
+  current_style = style;
+  let pattern = draw_layer_styles.style[style];
+  draw_layer.setStyle(pattern);
+}
+
+
+
+
+
+
+
+
+
+
+
 
 // ============================================================================
 // MAP CREATION
@@ -421,6 +852,25 @@ async function createMap(target, options = {}) {
   const vectorLayers = createVectorLayers(layerSettings);
   layers.push(...vectorLayers);
 
+  // create draw layer
+  //create a container for drawn features
+  const draw_features = new ol.Collection();
+  const draw_source = new ol.source.Vector({
+    features: draw_features
+  });
+  const draw_layer = new ol.layer.Vector({
+    name: "draw_layer",
+    source: draw_source,
+    //style: draw_layer_styles.style[draw_layer_styles.EDIT],
+    //zIndex: 9
+  });
+  layers.push(draw_layer);
+
+  console.log(layers);
+
+
+
+
   // Create map
   const map = new ol.Map({
     target,
@@ -449,7 +899,7 @@ async function createMap(target, options = {}) {
 
     for (let i = 0; i < layerSettings.length; i++) {
       const config = layerSettings[i];
-      
+
       if (config.path_to_geometry) {
         const layerIndex = i + 1; // Account for base layer
         const layer = map.getLayers().item(layerIndex);
@@ -529,7 +979,7 @@ function initializeCheckboxes() {
   const checkboxes = document.getElementsByClassName(SELECTORS.CHECKBOX_CLASS);
 
   Array.from(checkboxes).forEach(checkbox => {
-    checkbox.addEventListener('change', function() {
+    checkbox.addEventListener('change', function () {
       const clickEvent = new CustomEvent(EVENTS.CHECKBOX, {
         detail: {
           message: {
@@ -550,6 +1000,23 @@ function initializeCheckboxes() {
 document.addEventListener('DOMContentLoaded', () => {
   initializeMaps();
   initializeCheckboxes();
+
+  //const radioButtons = document.getElementsByClassName(SELECTORS.RADIO_CLASS);
+  const radioButtons = document.querySelectorAll('input[type="radio"].govuk-radios__input');
+
+  console.log(radioButtons);
+  radioButtons.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      console.log('Selected value:', e.target.value);
+      /* console.log('Selected radio name:', e.target.name);
+      console.log('Selected radio id:', e.target.id); */
+      const retrievedMap = document.getElementById('map1')._olMap;
+      // Add your custom logic here
+      setMode(retrievedMap, e.target.value);
+    });
+  });
+
+
 });
 
 // ============================================================================
