@@ -669,7 +669,13 @@ add_draw_interaction = function (map, type) {
   } */
   //}
 };
-
+// Remove Drawn Feature
+remove_selected_feature = function(draw_source, id) {
+    //MAP_UNDO.store_state();
+    var features = draw_source.getFeatures();
+    var feature = features.filter(feature => feature.getProperties().id == id);
+    draw_source.removeFeature(feature[0])
+};
 
 /**
  * Set drawing mode based on radio controls elsewhere on page
@@ -750,6 +756,8 @@ function setMode(map, modeType) {
       return;
 
     case 'edit-area':
+      const features = draw_layer.getSource().getFeatures();
+      const draw_features = new ol.Collection(features);
       map.removeInteraction(current_interaction);
       toggle_draw_layer_style(draw_layer, draw_layer_styles.EDIT);
       //toggle_draw_layer_style => MAP_CONFIG.draw_layer.setStyle(pattern);
@@ -760,30 +768,35 @@ function setMode(map, modeType) {
 
       map.addInteraction(current_interaction);
       //$("#" + editButtonId).trigger("edit:toggled");
-      if (vectorControls.snap_to_enabled) {
+      /* if (vectorControls.snap_to_enabled) {
         map.addInteraction(snap_to_interaction)
-      }
+      } */
 
       current_interaction.on('modifystart', function (event) {
-        MAP_UNDO.store_state();
+        //MAP_UNDO.store_state();
       });
 
       return;
 
     case 'delete-area':
+      const draw_source = draw_layer.getSource();
       //$('.center').removeClass('govuk-visually-hidden');
       map.removeInteraction(current_interaction);
 
       toggle_draw_layer_style(draw_layer, draw_layer_styles.REMOVE);
 
       current_interaction = new ol.interaction.Select({
-        layers: [MAP_CONFIG.draw_layer]
+        layers: [draw_layer]
       });
 
       current_interaction.getFeatures().on('add', function (event) {
+        console.log(event);
         var feature_id = event.element.getProperties().id;
+        console.log(event.element.getProperties());
+        console.log(feature_id);
+        
 
-        remove_selected_feature(feature_id);
+        remove_selected_feature(draw_source, feature_id);
         current_interaction.getFeatures().clear();
       });
 
