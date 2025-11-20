@@ -378,10 +378,12 @@ const getLayerByName = (map, name) => {
  */
 function setupCheckboxListener(map) {
   document.addEventListener(EVENTS.CHECKBOX, (event) => {
-    const { id, isChecked } = event.detail.message;
+    const { id, isChecked, sender } = event.detail.message;
+    const  thisMap = map.getTarget();
     const layer = getLayerByName(map, id);
 
-    if (layer) {
+    if (layer && sender == thisMap) {
+      console.log(thisMap, event.detail.message.sender);
       layer.setVisible(isChecked);
     }
   });
@@ -844,11 +846,13 @@ console.log(options.useDrawTools);
     zoom = DEFAULTS.ZOOM,
     tile_url = '',
     layers: layerSettings = null,
-    useDrawTools
+    useDrawTools,
+    layerControls
   } = options;
 
   console.log('Creating map:', target, coords, zoom);
-  console.log('useDrawTools map:', useDrawTools);
+  console.log('useDrawTools:', useDrawTools);
+  console.log('layerControls:', layerControls);
 
   // Initialize projection
   initializeProjection();
@@ -892,7 +896,10 @@ console.log(options.useDrawTools);
   }
 
   // Setup checkbox listener if layers exist
-  if (layerSettings) {
+  if (layerControls) {
+    // set up cutom events
+    initializeCheckboxes(target);
+    // and custom listeners
     setupCheckboxListener(map);
   }
 
@@ -956,7 +963,6 @@ function initializeMaps() {
   Array.from(mapElements).forEach((element, index) => {
     const target = `map${index + 1}`;
     element.setAttribute('id', target);
-console.log(element);
 
     // Parse coords - handle null, empty array, or invalid JSON
     let coords = null;
@@ -977,11 +983,16 @@ console.log(element);
     if (element.dataset.use_draw_tools.toUpperCase() == "TRUE"){
       useDrawTools = true;
     }
+    let layerControls = false;
+    if (element.dataset.layer_controls.toUpperCase() == "TRUE"){
+      layerControls = true;
+    }
 
     const options = {
       coords,
       zoom: parseInt(element.dataset.zoom) || DEFAULTS.ZOOM,
       useDrawTools: useDrawTools,
+      layerControls: layerControls,
       tile_url: element.dataset.tileurl || '',
       layers: element.dataset.layers ? JSON.parse(element.dataset.layers) : null
     };
@@ -993,14 +1004,16 @@ console.log(element);
 /**
  * Initialize checkbox event dispatchers
  */
-function initializeCheckboxes() {
+function initializeCheckboxes(target) {
   const checkboxes = document.getElementsByClassName(SELECTORS.CHECKBOX_CLASS);
+
 
   Array.from(checkboxes).forEach(checkbox => {
     checkbox.addEventListener('change', function () {
       const clickEvent = new CustomEvent(EVENTS.CHECKBOX, {
         detail: {
           message: {
+            sender: target,
             id: this.id,
             isChecked: this.checked
           }
@@ -1117,9 +1130,6 @@ MAP_UNDO.put_geometries = function(geometry) {
 
 document.addEventListener('DOMContentLoaded', () => {
   initializeMaps();
-  initializeCheckboxes();
-
-
 });
 
 // ============================================================================
