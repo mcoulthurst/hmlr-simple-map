@@ -377,8 +377,6 @@ const getLayerByName = (map, name) => {
  * @param {ol.Map} map - OpenLayers map instance
  */
 function setupCheckboxListener(map) {
-
-
   document.addEventListener(EVENTS.CHECKBOX, (event) => {
     const { id, isChecked } = event.detail.message;
     const layer = getLayerByName(map, id);
@@ -388,14 +386,15 @@ function setupCheckboxListener(map) {
     }
   });
 }
+
 ///------------------------- DRAW
 
 var hover_interaction = null;
 var current_interaction = null;
 
 var add_colour = '#003078';
-var edit_colour = '#00703c';//'#007A7C';
-var delete_colour = '#d4351c';//'#c41919';
+var edit_colour = '#00703c';
+var delete_colour = '#d4351c';
 
 var add_fill = [0, 48, 120, 0.2];
 var edit_fill = [0, 112, 60, 0.2];
@@ -423,7 +422,6 @@ draw_layer_styles = {
   // Associated Feature Styles for mode
   style: {
 
-
     // DRAW | add
     0: new ol.style.Style({
       fill: new ol.style.Fill({
@@ -431,7 +429,6 @@ draw_layer_styles = {
       }),
       stroke: new ol.style.Stroke({
         color: add_colour,
-        //color: '#85994b',
         width: 3,
         lineDash: [5, 5]
       }),
@@ -449,8 +446,7 @@ draw_layer_styles = {
       }),
       stroke: new ol.style.Stroke({
         color: edit_colour,
-        width: 2,
-        /* lineDash: [5, 5] */
+        width: 2
       }),
       image: new ol.style.Circle({
         radius: 5,
@@ -476,11 +472,11 @@ draw_layer_styles = {
     // delete | remove
     2: new ol.style.Style({
       stroke: new ol.style.Stroke({
-        color: delete_colour,//[255, 0, 0, 0.8],
+        color: delete_colour,
         width: 2
       }),
       fill: new ol.style.Fill({
-        color: delete_fill//[255,0,0,0.4]
+        color: delete_fill
       }),
       image: new ol.style.Circle({
         radius: 5,
@@ -497,7 +493,6 @@ draw_layer_styles = {
       stroke: new ol.style.Stroke({
         color: '#0658e5',
         width: 2,
-        /*  lineDash: [5, 5] */
       }),
       image: new ol.style.Circle({
         radius: 5,
@@ -537,12 +532,9 @@ draw_layer_styles = {
     // HIGHLIGHT
     6: new ol.style.Style({
       fill: new ol.style.Fill({
-        //color: 'rgba(0,48,120,0.3)'
         color: [255, 221, 0, 0.6]
       }),
       stroke: new ol.style.Stroke({
-        //color: 'rgba(0,48,120,1)',
-        // color: '#b1b4b6',
         color: '#003078',
         width: 3
       }),
@@ -565,15 +557,11 @@ draw_layer_styles = {
         color: [255, 255, 255, 0]
       }),
       stroke: new ol.style.Stroke({
-        // color: '#b1b4b6',
         color: [255, 255, 255, 0],
         width: 1
       }),
       radius: 5
     })
-
-
-
   }
 }
 
@@ -850,14 +838,17 @@ async function createMap(target, options = {}) {
   if (!coords || (Array.isArray(coords) && coords.length === 0)) {
     coords = DEFAULTS.COORDS;
   }
+console.log(options.useDrawTools);
 
   const {
     zoom = DEFAULTS.ZOOM,
     tile_url = '',
-    layers: layerSettings = null
+    layers: layerSettings = null,
+    useDrawTools
   } = options;
 
   console.log('Creating map:', target, coords, zoom);
+  console.log('useDrawTools map:', useDrawTools);
 
   // Initialize projection
   initializeProjection();
@@ -880,10 +871,7 @@ async function createMap(target, options = {}) {
     //zIndex: 9
   });
   layers.push(draw_layer);
-
   console.log(layers);
-
-
 
 
   // Create map
@@ -907,6 +895,14 @@ async function createMap(target, options = {}) {
   if (layerSettings) {
     setupCheckboxListener(map);
   }
+
+  console.log('draw?', useDrawTools);
+  
+  // Setup checkbox listener if layers exist
+  if (useDrawTools) {
+    initializeDrawTools();
+  }
+
 
   // Load geometries and setup interactions
   if (layerSettings && Array.isArray(layerSettings)) {
@@ -960,6 +956,7 @@ function initializeMaps() {
   Array.from(mapElements).forEach((element, index) => {
     const target = `map${index + 1}`;
     element.setAttribute('id', target);
+console.log(element);
 
     // Parse coords - handle null, empty array, or invalid JSON
     let coords = null;
@@ -976,9 +973,15 @@ function initializeMaps() {
       console.warn(`Invalid coords data for ${target}:`, error);
     }
 
+    let useDrawTools = false;
+    if (element.dataset.use_draw_tools.toUpperCase() == "TRUE"){
+      useDrawTools = true;
+    }
+
     const options = {
       coords,
       zoom: parseInt(element.dataset.zoom) || DEFAULTS.ZOOM,
+      useDrawTools: useDrawTools,
       tile_url: element.dataset.tileurl || '',
       layers: element.dataset.layers ? JSON.parse(element.dataset.layers) : null
     };
@@ -1005,6 +1008,32 @@ function initializeCheckboxes() {
       });
       document.dispatchEvent(clickEvent);
     });
+  });
+}
+
+/**
+ * Initialize drawing tool event dispatchers
+ */
+function initializeDrawTools() {
+  //const radioButtons = document.getElementsByClassName(SELECTORS.RADIO_CLASS);
+  const radioButtons = document.querySelectorAll('input[type="radio"].govuk-radios__input');
+
+  radioButtons.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      console.log('Selected value:', e.target.value);
+      /* console.log('Selected radio name:', e.target.name);
+      console.log('Selected radio id:', e.target.id); */
+      const retrievedMap = document.getElementById('map1')._olMap;
+      // Add your custom logic here
+      setMode(retrievedMap, e.target.value);
+    });
+  });
+
+  document.getElementById('clearAllBtn').addEventListener('click', function() {
+    draw_source.clear();
+  });
+  document.getElementById('undoBtn').addEventListener('click', function() {
+     MAP_UNDO.undo();
   });
 }
 
@@ -1089,27 +1118,6 @@ MAP_UNDO.put_geometries = function(geometry) {
 document.addEventListener('DOMContentLoaded', () => {
   initializeMaps();
   initializeCheckboxes();
-
-  //const radioButtons = document.getElementsByClassName(SELECTORS.RADIO_CLASS);
-  const radioButtons = document.querySelectorAll('input[type="radio"].govuk-radios__input');
-
-  radioButtons.forEach(radio => {
-    radio.addEventListener('change', (e) => {
-      console.log('Selected value:', e.target.value);
-      /* console.log('Selected radio name:', e.target.name);
-      console.log('Selected radio id:', e.target.id); */
-      const retrievedMap = document.getElementById('map1')._olMap;
-      // Add your custom logic here
-      setMode(retrievedMap, e.target.value);
-    });
-  });
-
-  document.getElementById('clearAllBtn').addEventListener('click', function() {
-    draw_source.clear();
-  });
-  document.getElementById('undoBtn').addEventListener('click', function() {
-     MAP_UNDO.undo();
-  });
 
 
 });
