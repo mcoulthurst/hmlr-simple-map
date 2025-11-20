@@ -29,7 +29,8 @@
       data-coords="[{{ params.coords }}]" 
       data-zoom="{{ params.zoom }}" 
       data-interactive="{{ params.interactive }}" 
-      data-use_draw_tools="{{ params.useDrawTools }}" 
+      data-use_draw_tools="{{ params.use_draw_tools }}" 
+      data-layer_controls="{{ params.layer_controls }}" 
       data-path_to_geometry="{{ params.path_to_geometry }}" 
       data-tileurl="{{ params.tile_url }}"
       data-layers="{{ params.layers | dump }}" 
@@ -43,7 +44,7 @@
   </figure>
 
   {% if params.layers %}
-  {% if params.layerControls===true or params.layerControls==="true" %}
+  {% if params.layer_controls===true or params.layer_controls==="true" %}
 
 <div class="govuk-form-group layer_controls">
   <fieldset class="govuk-fieldset">
