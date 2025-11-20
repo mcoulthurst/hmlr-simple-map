@@ -40,6 +40,8 @@ const SELECTORS = {
   RADIO_CLASS: 'govuk-radios__input'
 };
 
+let draw_source = null;
+
 // ============================================================================
 // PROJECTION INITIALIZATION
 // ============================================================================
@@ -620,7 +622,7 @@ add_draw_interaction = function (map, type) {
             geometry = new ol.geom.LineString([]);
           }
           geometry.setCoordinates(coords);
-          //MAP_UNDO.drawing = coords.length > 1;
+          MAP_UNDO.drawing = coords.length > 1;
         } else if (type === "Point") {
           if (!geometry) {
             geometry = new ol.geom.Point([]);
@@ -631,7 +633,7 @@ add_draw_interaction = function (map, type) {
             geometry = new ol.geom.Polygon([]);
           }
           geometry.setCoordinates([coords[0].concat([coords[0][0]])]);
-          //MAP_UNDO.drawing = coords[0].length > 1;
+          MAP_UNDO.drawing = coords[0].length > 1;
         }
 
         return geometry;
@@ -656,11 +658,11 @@ add_draw_interaction = function (map, type) {
   });
 
   current_interaction.on('drawstart', function (event) {
-    //MAP_UNDO.store_state();
+    MAP_UNDO.store_state();
   });
 
   current_interaction.on('drawend', function (event) {
-    //MAP_UNDO.drawing = false;
+    MAP_UNDO.drawing = false;
   });
 
   map.addInteraction(current_interaction);
@@ -670,8 +672,8 @@ add_draw_interaction = function (map, type) {
   //}
 };
 // Remove Drawn Feature
-remove_selected_feature = function(draw_source, id) {
-    //MAP_UNDO.store_state();
+remove_selected_feature = function(id) {
+    MAP_UNDO.store_state();
     var features = draw_source.getFeatures();
     var feature = features.filter(feature => feature.getProperties().id == id);
     draw_source.removeFeature(feature[0])
@@ -773,13 +775,13 @@ function setMode(map, modeType) {
       } */
 
       current_interaction.on('modifystart', function (event) {
-        //MAP_UNDO.store_state();
+        MAP_UNDO.store_state();
       });
 
       return;
 
     case 'delete-area':
-      const draw_source = draw_layer.getSource();
+      //const draw_source = draw_layer.getSource();
       //$('.center').removeClass('govuk-visually-hidden');
       map.removeInteraction(current_interaction);
 
@@ -796,7 +798,7 @@ function setMode(map, modeType) {
         console.log(feature_id);
         
 
-        remove_selected_feature(draw_source, feature_id);
+        remove_selected_feature(feature_id);
         current_interaction.getFeatures().clear();
       });
 
@@ -868,7 +870,7 @@ async function createMap(target, options = {}) {
   // create draw layer
   //create a container for drawn features
   const draw_features = new ol.Collection();
-  const draw_source = new ol.source.Vector({
+  draw_source = new ol.source.Vector({
     features: draw_features
   });
   const draw_layer = new ol.layer.Vector({
@@ -1007,6 +1009,80 @@ function initializeCheckboxes() {
 }
 
 // ============================================================================
+// UNDO
+// ============================================================================
+
+/*global MAP_CONTROLS MAP_CONFIG document ol draw_layer_styles*/
+
+var MAP_UNDO = {};
+
+MAP_UNDO.undo_stack = [];
+MAP_UNDO.drawing = false;
+
+MAP_UNDO.store_state = function() {
+    MAP_UNDO.undo_stack.push(MAP_UNDO.get_geometries());
+    // Limit growth of undo stack [AC3]
+    if(MAP_UNDO.undo_stack.length > 10) {
+        MAP_UNDO.undo_stack = MAP_UNDO.undo_stack.slice(MAP_UNDO.undo_stack.length - 10)
+    }
+    MAP_UNDO.enable_undo_button(true);
+};
+
+MAP_UNDO.undo = function() {
+    if(MAP_UNDO.drawing) {
+        MAP_UNDO.openlayers_undo();
+    } else {
+        MAP_UNDO.remove_undo();
+    }
+};
+
+MAP_UNDO.openlayers_undo = function() {
+    current_interaction.removeLastPoint();
+};
+
+MAP_UNDO.remove_undo = function() {
+
+    if(MAP_UNDO.undo_stack.length > 0) {
+        MAP_UNDO.put_geometries(MAP_UNDO.undo_stack.pop());
+    }
+    
+    MAP_UNDO.enable_undo_button(MAP_UNDO.undo_stack.length > 0);
+    //removeActiveControl();
+};
+
+MAP_UNDO.enable_undo_button = function(enable) {
+    document.getElementById('undoBtn').disabled = !enable;
+};
+
+MAP_UNDO.get_geometries = function() {
+    var geojson = new ol.format.GeoJSON();
+    var features = draw_source.getFeatures();
+
+    var options = {
+        dataProjection: 'EPSG:27700',
+        featureProjection: 'EPSG:27700'
+    }
+
+    var features_json = geojson.writeFeatures(features, options);
+    return features_json;
+};
+
+MAP_UNDO.put_geometries = function(geometry) {
+    var options = {
+        dataProjection: 'EPSG:27700',
+        featureProjection: 'EPSG:27700'
+    };
+
+    draw_source.clear();
+    var features = new ol.format.GeoJSON().readFeatures(geometry, options);
+
+    draw_source.addFeatures(features);
+};
+
+
+
+
+// ============================================================================
 // DOM READY
 // ============================================================================
 
@@ -1017,7 +1093,6 @@ document.addEventListener('DOMContentLoaded', () => {
   //const radioButtons = document.getElementsByClassName(SELECTORS.RADIO_CLASS);
   const radioButtons = document.querySelectorAll('input[type="radio"].govuk-radios__input');
 
-  console.log(radioButtons);
   radioButtons.forEach(radio => {
     radio.addEventListener('change', (e) => {
       console.log('Selected value:', e.target.value);
@@ -1027,6 +1102,13 @@ document.addEventListener('DOMContentLoaded', () => {
       // Add your custom logic here
       setMode(retrievedMap, e.target.value);
     });
+  });
+
+  document.getElementById('clearAllBtn').addEventListener('click', function() {
+    draw_source.clear();
+  });
+  document.getElementById('undoBtn').addEventListener('click', function() {
+     MAP_UNDO.undo();
   });
 
 
