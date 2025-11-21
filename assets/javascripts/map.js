@@ -494,6 +494,12 @@ async function createMap(target, options = {}) {
     }),
   });
 
+  // Store map reference on element in order to update map from code on page
+  const mapElement = document.getElementById(target);
+  if (mapElement) {
+    mapElement._olMap = map;
+  }
+
   // Optional controls
   if (options.layerControls) {
     initializeCheckboxes(target);
