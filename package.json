@@ -4,9 +4,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
-  "description": "Provides a Hello World template",
+  "author": "Martin Coulthurst",
+  "license": "MIT",
+  "description": "A flexible, OpenLayers-based mapping component for the GOV.UK Prototype Kit, with built-in support for British National Grid (BNG) projection and GeoJSON boundary visualization.",
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "eslint": "^9.39.1",

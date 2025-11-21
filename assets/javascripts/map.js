@@ -456,7 +456,7 @@ async function loadLayerGeometries(map, layerSettings, coords, zoom) {
           }
         }
       } catch (error) {
-        console.error(`Failed to load geometry for layer ${i + 1}:`, error);
+        console.warn(`Failed to load geometry for layer ${i + 1}:`, error);
       }
 
       if (config.interactive?.toUpperCase() === 'TRUE') {
@@ -564,8 +564,8 @@ function parseMapOptions(el) {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length) coords = parsed;
     }
-  } catch (err) {
-    console.warn('Invalid coords data:', err);
+  } catch (error) {
+    console.warn('Invalid coords data:', error);
   }
 
   return {
@@ -583,8 +583,8 @@ function initializeMaps() {
     const target = `map${i + 1}`;
     el.id = target;
     const options = parseMapOptions(el);
-    createMap(target, options).catch((err) =>
-      console.error(`Failed to create map ${target}:`, err),
+    createMap(target, options).catch((error) =>
+      console.warn(`Failed to create map ${target}:`, error),
     );
   });
 }
@@ -594,7 +594,7 @@ document.addEventListener('DOMContentLoaded', initializeMaps);
 // ============================================================================
 // EXPORTS
 // ============================================================================
-if (typeof module !== 'undefined' && module.exports) {
+/* if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     createMap,
     initializeMaps,
@@ -604,4 +604,4 @@ if (typeof module !== 'undefined' && module.exports) {
     CONFIG,
     DRAW_MODES,
   };
-}
+} */
