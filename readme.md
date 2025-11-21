@@ -1,4 +1,4 @@
-# HMLR Simple Map Component
+# HMLR Map Component
 
 A flexible, OpenLayers-based mapping component for the GOV.UK Prototype Kit, with built-in support for British National Grid (BNG) projection and GeoJSON boundary visualization.
 
@@ -12,37 +12,28 @@ A flexible, OpenLayers-based mapping component for the GOV.UK Prototype Kit, wit
 - **Flexible sizing** and positioning options
 - **Feature selection** from GeoJSON collections
 
-## Installation
+## How to use
 
-### Local Installation
+### Install the package
 
-1. Download this repository
-2. Create a local package:
+First, install the package to your prototype. In terminal run the following command:
    ```
-   npm pack
-   ```
-3. Copy the generated `hmlr-simple-map-1.0.0.tgz` file to your prototype directory
-4. Install the package:
-   ```
-   npm install hmlr-simple-map-1.0.0.tgz
+   npm install hmlr-map
    ```
 
-Alternatively, use the pre-packed version from the repository.
-
-## Usage
 
 ### Import the Component
 
-In your Nunjucks template:
+Set the vlues of the map in your HTML template. (This currently only works as a nunjucks macro):
 
 ```njk
-{% from "hmlrSimpleMap.njk" import hmlrSimpleMap %}
+{% from "hmlrMap.njk" import hmlrMap %}
 ```
 
 ### Basic Example
 
 ```njk
-{{ hmlrSimpleMap({
+{{ hmlrMap({
   alt: "Map of Plymouth",
   caption: "Example map with default settings"
 }) }}
@@ -138,7 +129,7 @@ style: {
 ### Example 1: Custom size and location
 
 ```njk
-{{ hmlrSimpleMap({
+{{ hmlrMap({
   alt: "Map of Cornwall, showing a field north of Liskeard",
   caption: "Custom size, coordinates and zoom",
   coords: "225000, 65000",
@@ -151,7 +142,7 @@ style: {
 ### Example 2: Loading external geoJSON
 
 ```njk
-{{ hmlrSimpleMap({
+{{ hmlrMap({
   alt: "Map showing boundary data",
   caption: "Loading external GeoJSON with auto-fit",
   layers: [{
@@ -163,7 +154,7 @@ style: {
 ### Example 3: Custom styling
 
 ```njk
-{{ hmlrSimpleMap({
+{{ hmlrMap({
   alt: "Map with custom styled boundary",
   caption: "Custom styling with dashed red line",
   coords: "225000, 65000",
@@ -188,7 +179,7 @@ style: {
 ### Example 4: Selecting a single feature using geometry_index
 
 ```njk
-{{ hmlrSimpleMap({
+{{ hmlrMap({
   alt: "Single feature selection",
   caption: "Selecting feature 3 from a collection",
   layers: [{
@@ -204,7 +195,7 @@ style: {
 ### Example 5: Interactive hidden geometry
 
 ```njk
-{{ hmlrSimpleMap({
+{{ hmlrMap({
   alt: "Interactive map",
   caption: "Hidden geometry with click events",
   zoom: 15.5,
@@ -219,7 +210,7 @@ style: {
 ### Example 6: Multiple layers with custom map tile and layer controls
 
 ```njk
-{{ hmlrSimpleMap({
+{{ hmlrMap({
   alt: "Multi-layer map",
   caption: "Layered boundaries with visibility controls",
   layer_controls: "true",
@@ -262,7 +253,7 @@ style: {
 ### Example 7: Hatched fill 
 
 ```njk
-{{ hmlrSimpleMap({
+{{ hmlrMap({
   alt: "Map with hatched pattern",
   caption: "Experimental canvas hatching",
   layers: [{
@@ -275,7 +266,7 @@ style: {
 ### Example 8: Drawing tools 
 
 ```njk
-{{ hmlrSimpleMap({
+{{ hmlrMap({
       alt: "HMLR map component",
       caption: "© Crown copyright and database rights 2025 Ordnance Survey AC0000000XXX. Use of this data is subject to Ordnance Survey",
       width: "100%",

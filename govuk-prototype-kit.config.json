@@ -2,8 +2,8 @@
   "nunjucksPaths": ["/", "/macros" ],
   "nunjucksMacros": [
     {
-      "macroName": "hmlrSimpleMap",
-      "importFrom": "hmlrSimpleMap.njk"
+      "macroName": "hmlrMap",
+      "importFrom": "hmlrMap.njk"
     }
   ],
 
