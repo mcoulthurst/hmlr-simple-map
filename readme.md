@@ -60,6 +60,7 @@ All parameters are **optional** with defaults provided.
 | `caption` | String | - | Caption displayed below the map |
 | `coords` | String | `248050, 53750` | Center coordinates in BNG format (Easting, Northing) |
 | `zoom` | Number | `15` | Initial zoom level (1-18) |
+| `use_draw_tools` | String | `"true"` | Enable drawing tools (requires separate components to set Drawing Mode) |
 | `height` | String | `500px` | Map height (any valid CSS value) |
 | `width` | String | `100%` | Map width (any valid CSS value) |
 
@@ -68,7 +69,7 @@ All parameters are **optional** with defaults provided.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `layers` | Array | `null` | Array of layer configuration objects (see Layer Options below) |
-| `layerControls` | String | `"false"` | Enable layer visibility checkboxes (`"true"` or `"false"`) |
+| `layer_controls` | String | `"false"` | Enable layer visibility checkboxes (`"true"` or `"false"`) |
 | `tile_url` | String | OSM tiles | Custom base map tile URL (e.g., CartoDB, Mapbox) |
 
 ### Layer Options
@@ -134,16 +135,7 @@ style: {
 
 ## Examples
 
-### Example 1: Default map
-
-```njk
-{{ hmlrSimpleMap({
-  alt: "Map of Plymouth",
-  caption: "Example map with default settings"
-}) }}
-```
-
-### Example 2: Custom size and location
+### Example 1: Custom size and location
 
 ```njk
 {{ hmlrSimpleMap({
@@ -156,7 +148,7 @@ style: {
 }) }}
 ```
 
-### Example 3: Loading external geoJSON
+### Example 2: Loading external geoJSON
 
 ```njk
 {{ hmlrSimpleMap({
@@ -168,7 +160,7 @@ style: {
 }) }}
 ```
 
-### Example 4: Custom styling
+### Example 3: Custom styling
 
 ```njk
 {{ hmlrSimpleMap({
@@ -193,7 +185,7 @@ style: {
 ```
 
 
-### Example 5: Selecting a single feature using geometry_index
+### Example 4: Selecting a single feature using geometry_index
 
 ```njk
 {{ hmlrSimpleMap({
@@ -209,7 +201,7 @@ style: {
 }) }}
 ```
 
-### Example 6: Interactive hidden geometry
+### Example 5: Interactive hidden geometry
 
 ```njk
 {{ hmlrSimpleMap({
@@ -224,13 +216,13 @@ style: {
 }) }}
 ```
 
-### Example 7: Multiple layers with custom map tile and layer controls
+### Example 6: Multiple layers with custom map tile and layer controls
 
 ```njk
 {{ hmlrSimpleMap({
   alt: "Multi-layer map",
   caption: "Layered boundaries with visibility controls",
-  layerControls: "true",
+  layer_controls: "true",
   layers: [
     {
       path_to_geometry: "/public/data/inspire_data.geojson",
@@ -267,7 +259,7 @@ style: {
 }) }}
 ```
 
-### Example 8: Hatched fill 
+### Example 7: Hatched fill 
 
 ```njk
 {{ hmlrSimpleMap({
@@ -279,6 +271,47 @@ style: {
     style: "green HATCHED"
   }]
 }) }}
+```
+### Example 8: Drawing tools 
+
+```njk
+{{ hmlrSimpleMap({
+      alt: "HMLR map component",
+      caption: "© Crown copyright and database rights 2025 Ordnance Survey AC0000000XXX. Use of this data is subject to Ordnance Survey",
+      width: "100%",
+      height: "100%",
+      use_draw_tools: "true",
+      layer_controls: "false",
+      layers:[
+        {
+          description:"Registrations (INSPIRE)",
+          interactive: "true",
+          style: {
+            fill: {
+              color: "#4c2c9244"
+            },
+            stroke: {
+              color: "#4c2c9299",
+              width: 1
+            }
+          }
+        },
+          {
+          description:"Postcode",
+          style: {
+            fill: {
+              color: "#d4351c33"
+            },
+            stroke: {
+              color: "#d4351c",
+              width: 3,
+              lineDash: [10, 6]
+            }
+          }
+        }
+      ],
+      tile_url: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
+    }) }}
 ```
 
 ## Interactive Features
