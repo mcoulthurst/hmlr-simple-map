@@ -411,8 +411,6 @@ function putGeometries(geometry) {
 
 function clearAllDrawings() {
   state.drawSource.clear();
-  state.undoStack = [];
-  enableUndoButton(false);
 }
 
 // ============================================================================
