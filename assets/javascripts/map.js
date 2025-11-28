@@ -43,23 +43,22 @@ const CONFIG = {
   },
 };
 
-const DRAW_MODES = {
-  DRAW: 0,
-  EDIT: 1,
-  REMOVE: 2,
-  NONE: 3,
-  HOLE: 4,
-  HOVER: 5,
-  HIGHLIGHT: 6,
-  SHOW_CHARGE: 7,
-  FADE: 8,
-};
+const DRAW= "DRAW",
+  EDIT= "EDIT",
+  REMOVE= "REMOVE",
+  NONE= "NONE",
+  HOLE= "HOLE",
+  HOVER= "HOVER",
+  HIGHLIGHT= "HIGHLIGHT",
+  SHOW_CHARGE= "SHOW_CHARGE",
+  FADE= "FADE"
+;
 
 const state = {
   drawSource: null,
   currentInteraction: null,
   hoverInteraction: null,
-  currentStyle: DRAW_MODES.NONE,
+  currentStyle: NONE,
   isDrawing: false,
   undoStack: [],
 };
@@ -181,9 +180,9 @@ function createDrawStyles() {
   });
 
   return {
-    [DRAW_MODES.DRAW]: new ol.style.Style(makeStyle([0, 48, 120, 0.2], CONFIG.COLORS.BLUE, 3, [5, 5])),
+    'DRAW': new ol.style.Style(makeStyle([0, 48, 120, 0.2], CONFIG.COLORS.BLUE, 3, [5, 5])),
 
-    [DRAW_MODES.EDIT]: [
+    'EDIT': [
       // Main polygon style
       new ol.style.Style(makeStyle([0, 112, 60, 0.2], CONFIG.COLORS.GREEN, 2)),
 
@@ -200,20 +199,30 @@ function createDrawStyles() {
       }),
     ],
 
-    [DRAW_MODES.REMOVE]: new ol.style.Style(makeStyle([212, 53, 28, 0.2], CONFIG.COLORS.RED, 2)),
-    [DRAW_MODES.NONE]: new ol.style.Style(makeStyle([6, 88, 229, 0.1], '#0658e5', 2)),
-    [DRAW_MODES.HOVER]: createHoverStyle(),
-    [DRAW_MODES.HIGHLIGHT]: new ol.style.Style({
+    'REMOVE': new ol.style.Style(makeStyle([212, 53, 28, 0.2], CONFIG.COLORS.RED, 2)),
+    'NONE': new ol.style.Style(makeStyle([6, 88, 229, 0.1], '#0658e5', 2)),
+    'HOVER': createHoverStyle(),
+    'HIGHLIGHT': new ol.style.Style({
       fill: new ol.style.Fill({ color: [255, 221, 0, 0.6] }),
       stroke: new ol.style.Stroke({ color: CONFIG.COLORS.BLUE, width: 3 }),
     }),
-    [DRAW_MODES.SHOW_CHARGE]: new ol.style.Style({
+    'SHOW_CHARGE': new ol.style.Style({
       fill: new ol.style.Fill({ color: [255, 255, 255, 0.25] }),
       stroke: new ol.style.Stroke({ color: '#0658e5', width: 2 }),
     }),
-    [DRAW_MODES.FADE]: new ol.style.Style({
+    'FADE': new ol.style.Style({
       fill: new ol.style.Fill({ color: [255, 255, 255, 0] }),
       stroke: new ol.style.Stroke({ color: [255, 255, 255, 0], width: 1 }),
+    }),
+    'HOLE': new ol.style.Style({
+      fill: new ol.style.Fill({
+        color: '#0d316f33'
+      }),
+      stroke: new ol.style.Stroke({
+        color: '#0d316f',
+        width: 3,
+        lineDash: [1, 5]
+      })
     }),
   };
 }
@@ -294,12 +303,12 @@ function addHoverInteraction(map) {
 // ============================================================================
 function addDrawInteraction(map, type, drawLayer, drawStyles) {
   map.removeInteraction(state.currentInteraction);
-  drawLayer.setStyle(drawStyles[DRAW_MODES.DRAW]);
+  drawLayer.setStyle(drawStyles[DRAW]);
 
   const interaction = new ol.interaction.Draw({
     source: drawLayer.getSource(),
     type,
-    style: drawStyles[DRAW_MODES.DRAW],
+    style: drawStyles[DRAW],
     geometryFunction: type === 'Circle' ? ol.interaction.Draw.createRegularPolygon(30) : undefined,
   });
 
@@ -317,13 +326,97 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
   map.addInteraction(interaction);
 }
 
+function addCutoutInteraction(map, drawLayer, drawStyles) {
+  map.removeInteraction(state.currentInteraction);
+    
+    const interaction = new ol.interaction.Draw({
+      source: drawLayer.getSource(),
+      type: 'Polygon',
+      style: drawStyles[HOLE],
+      
+      // Condition to only draw when clicking on an existing polygon
+      condition: function(event) {
+        const features = drawLayer.getSource().getFeaturesAtCoordinate(event.coordinate);
+        return features.length > 0 && features[0].getGeometry().getType() === 'Polygon';
+      },
+      
+      geometryFunction: function(coords, geometry) {
+        if (!geometry) {
+          geometry = new ol.geom.Polygon([]);
+        }
+        
+        // Close the ring by adding the first coordinate at the end
+        const closedCoords = coords[0].concat([coords[0][0]]);
+        geometry.setCoordinates([closedCoords]);
+        
+        state.drawing = coords[0].length > 1;
+        return geometry;
+      }
+    });
+
+    interaction.on('drawstart', function(event) {
+      storeUndoState();
+    });
+    
+    interaction.on('drawend', function(e) {
+      const holeGeometry = e.feature.getGeometry();
+      const holeCoords = holeGeometry.getCoordinates()[0];
+      
+      // Find the polygon feature at the drawn location
+      const coordinate = holeCoords[0];
+      const features = drawLayer.getSource().getFeaturesAtCoordinate(coordinate);
+      
+      if (features.length > 0) {
+        const targetFeature = features[0];
+        const targetGeom = targetFeature.getGeometry();
+        console.log(targetGeom);
+        
+        if (targetGeom.getType() === 'Polygon') {
+          // Get the outer ring to check its orientation
+          const outerRing = targetGeom.getLinearRing(0);
+          const outerArea = outerRing.getArea();
+          
+          // Create linear ring from hole coordinates
+          let linearRing = new ol.geom.LinearRing(holeCoords);
+          const holeArea = linearRing.getArea();
+          
+          // If both have same sign (same winding), reverse the hole
+          if ((outerArea > 0 && holeArea > 0) || (outerArea < 0 && holeArea < 0)) {
+            console.log('reverse coords');
+            
+            const reversedCoords = holeCoords.slice().reverse();
+            linearRing = new ol.geom.LinearRing(reversedCoords);
+          }
+          
+          // Append the hole
+          targetGeom.appendLinearRing(linearRing);
+          
+          // Force the feature to redraw by notifying it has changed
+          targetFeature.changed();
+            
+          // Prevent the hole from being added as a separate feature
+          setTimeout(() => {
+            drawLayer.getSource().removeFeature(e.feature);
+          }, 5); 
+
+        }
+
+      }
+      e.feature.setProperties({ id: Date.now() });
+      state.drawing = false;
+    });
+    
+    state.currentInteraction = interaction;
+    map.addInteraction(interaction);
+}
+
 function addModifyInteraction(map, drawLayer, drawStyles) {
   map.removeInteraction(state.currentInteraction);
-  drawLayer.setStyle(drawStyles[DRAW_MODES.EDIT]);
+  drawLayer.setStyle(drawStyles[EDIT]);
 
   const interaction = new ol.interaction.Modify({
     source: drawLayer.getSource(),
-    style: drawStyles[DRAW_MODES.EDIT],
+    style: drawStyles[EDIT],
   });
 
   interaction.on('modifystart', storeUndoState);
@@ -334,7 +427,7 @@ function addModifyInteraction(map, drawLayer, drawStyles) {
 
 function addDeleteInteraction(map, drawLayer) {
   map.removeInteraction(state.currentInteraction);
-  drawLayer.setStyle(createDrawStyles()[DRAW_MODES.REMOVE]);
+  drawLayer.setStyle(createDrawStyles()[REMOVE]);
 
   const interaction = new ol.interaction.Select({ layers: [drawLayer] });
   interaction.getFeatures().on('add', (e) => {
@@ -355,10 +448,15 @@ function removeSelectedFeature(id) {
 }
 
 function setDrawMode(map, modeType) {
+  console.log(modeType);
+  
   const drawLayer = getLayerByName(map, 'draw_layer');
   const drawStyles = createDrawStyles();
+  console.log(drawStyles);
+  
   const modes = {
     'draw-area': () => addDrawInteraction(map, 'Polygon', drawLayer, drawStyles),
+    'cutout-area': () => addCutoutInteraction(map, drawLayer, drawStyles),
     'add-circle': () => addDrawInteraction(map, 'Circle', drawLayer, drawStyles),
     'add-point': () => addDrawInteraction(map, 'Point', drawLayer, drawStyles),
     'add-line': () => addDrawInteraction(map, 'LineString', drawLayer, drawStyles),
@@ -503,9 +601,6 @@ async function createMap(target, options = {}) {
     initializeCheckboxes(target);
     setupCheckboxListener(map);
   }
-  if (options.useDrawTools) {
-    initializeDrawTools(map);
-  }
 
   await loadLayerGeometries(map, options.layers, coords, zoom);
   return map;
@@ -514,20 +609,6 @@ async function createMap(target, options = {}) {
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
-function initializeDrawTools(map) {
-  document
-    .querySelectorAll(`input[type="radio"].${CONFIG.SELECTORS.RADIO_CLASS}`)
-    .forEach((radio) => {
-      radio.addEventListener('change', (e) => setDrawMode(map, e.target.value));
-    });
-
-  const clearBtn = document.getElementById('clearAllBtn');
-  if (clearBtn) clearBtn.addEventListener('click', clearAllDrawings);
-
-  const undoBtn = document.getElementById('undoBtn');
-  if (undoBtn) undoBtn.addEventListener('click', undo);
-}
-
 function initializeCheckboxes(target) {
   const checkboxes = document.getElementsByClassName(CONFIG.SELECTORS.CHECKBOX_CLASS);
   Array.from(checkboxes).forEach((checkbox) => {
@@ -571,7 +652,6 @@ function parseMapOptions(el) {
   return {
     coords,
     zoom: parseInt(el.dataset.zoom) || CONFIG.DEFAULTS.ZOOM,
-    useDrawTools: el.dataset.use_draw_tools?.toUpperCase() === 'TRUE',
     layerControls: el.dataset.layer_controls?.toUpperCase() === 'TRUE',
     tile_url: el.dataset.tileurl || '',
     layers: el.dataset.layers ? JSON.parse(el.dataset.layers) : null,
@@ -602,6 +682,5 @@ document.addEventListener('DOMContentLoaded', initializeMaps);
     undo,
     clearAllDrawings,
     CONFIG,
-    DRAW_MODES,
   };
 } */
