@@ -306,7 +306,6 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
   drawLayer.setStyle(drawStyles[DRAW]);
 
   const interaction = new ol.interaction.Draw({
-    source: drawLayer.getSource(),
     type,
     style: drawStyles[DRAW],
     geometryFunction: type === 'Circle' ? ol.interaction.Draw.createRegularPolygon(30) : undefined,
@@ -317,10 +316,62 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
     storeUndoState();
   });
 
-  interaction.on('drawend', (e) => {
-    e.feature.setProperties({ id: Date.now() });
+  interaction.on('drawend', (event) => {
+    // Get the newly drawn feature
+    const newFeature = event.feature;
+    
+    // Get all existing features
+    const existingFeatures = drawLayer.getSource().getFeatures();
+   
+    if (type ==="Polygon" || type === "Circle") {
+      if (existingFeatures.length > 0) {
+        combinePolygons([...existingFeatures, newFeature]);
+      }else{
+        drawLayer.getSource().addFeature(newFeature);
+      }
+    }else{
+        drawLayer.getSource().addFeature(newFeature);
+    }
+
+    event.feature.setProperties({ id: Date.now() });
     state.isDrawing = false;
   });
+
+  function combinePolygons(features) {
+    const format = new ol.format.GeoJSON();
+    const source = drawLayer.getSource();
+
+    // Filter to only include polygon features
+    const polygonFeatures = features.filter(f => {
+        const geom = f.getGeometry();
+        const geomType = geom.getType();
+        return geomType === 'Polygon' || geomType === 'MultiPolygon';
+    });
+    // or not
+    const nonPolygonFeatures = features.filter(f => {
+        const geom = f.getGeometry();
+        const geomType = geom.getType();
+        return geomType !== 'Polygon' && geomType !== 'MultiPolygon';
+    });
+    
+    source.clear();
+    
+    // If we have polygons, combine them
+    if (polygonFeatures.length > 0) {
+        const featureCollection = {
+            type: 'FeatureCollection',
+            features: polygonFeatures.map(f => format.writeFeatureObject(f))
+        };
+        
+        const unionResult = turf.union(featureCollection);
+        const combinedFeature = format.readFeature(unionResult);
+        source.addFeature(combinedFeature);
+    }
+    
+    // Add back all non-polygon features
+    nonPolygonFeatures.forEach(f => source.addFeature(f));
+    
+  }
 
   state.currentInteraction = interaction;
   map.addInteraction(interaction);
@@ -452,7 +503,6 @@ function setDrawMode(map, modeType) {
   
   const drawLayer = getLayerByName(map, 'draw_layer');
   const drawStyles = createDrawStyles();
-  console.log(drawStyles);
   
   const modes = {
     'draw-area': () => addDrawInteraction(map, 'Polygon', drawLayer, drawStyles),

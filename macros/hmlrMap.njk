@@ -3,25 +3,6 @@
   {% set width = params.width or '960px' %}
   {% set height = params.height or '540px' %}
 
-  {#% if params.style %}
-    {% for key, value in params.style %}
-      <br/><span class="key">key: {{ key }}:</span>
-      {% if value is mapping %}
-        {% for nestedKey, nestedValue in value %}
-          <br/><span class="key"> nestedKey {{ nestedKey }}:</span> 
-          {% if nestedValue is iterable and nestedValue is not string %}
-            <span class="value">iterable nestedValue: [{{ nestedValue | join(", ") }}]</span>
-          {% else %}
-            <span class="value">nestedValue: {{ nestedValue }}</span>
-          {% endif %}
-        {% endfor %}
-      {% else %}
-        <span class="value">{{ value }}</span>
-      {% endif %}
-    {% endfor %}
-  {% endif %#}
-
-
 
   <figure class="hmlr-map-wrapper">
     <div class="hmlr-map" style="height:{{ height }}; width:{{ width }}"
@@ -75,5 +56,8 @@
   {# can these be added as part of the config.json? #}
   <script src="https://cdn.jsdelivr.net/npm/ol@10.3.1/dist/ol.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/proj4@2.12.1/dist/proj4.js"></script>
+  {# import turf.js in order to combine geometries  #}
+  <script src='https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js'></script>
+
 
 {% endmacro %}
