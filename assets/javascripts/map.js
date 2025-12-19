@@ -319,17 +319,6 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
 
   interaction.on('drawend', (event) => {
     const newFeature = event.feature;
-    const geometry = newFeature.getGeometry();
-    const coordinates = geometry.getCoordinates();
-  
-    // Round all coordinates to 4 decimal places
-    const roundedCoords = coordinates.map(ring => 
-      ring.map(coord => 
-        coord.map(val => Math.round(val * 100) / 100)
-      )
-    );
-
-    geometry.setCoordinates(roundedCoords);
     
     // Get all existing features
     const existingFeatures = drawLayer.getSource().getFeatures();
@@ -375,15 +364,7 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
         };
         
         const unionResult = turf.union(featureCollection);
-
-        // Round coordinates to 2 decimals with Turf
-        const roundedUnion = turf.truncate(unionResult, {
-          precision: 2,       // number of decimals
-          coordinates: 2,     // round coordinates
-          mutate: false       // return a new object (safer)
-        });
-
-        const combinedFeature = format.readFeature(roundedUnion);
+        const combinedFeature = format.readFeature(unionResult);
         source.addFeature(combinedFeature);
     }
     
