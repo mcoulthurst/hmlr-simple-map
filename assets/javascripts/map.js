@@ -318,8 +318,18 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
   });
 
   interaction.on('drawend', (event) => {
-    // Get the newly drawn feature
     const newFeature = event.feature;
+    const geometry = newFeature.getGeometry();
+    const coordinates = geometry.getCoordinates();
+  
+    // Round all coordinates to 4 decimal places
+    const roundedCoords = coordinates.map(ring => 
+      ring.map(coord => 
+        coord.map(val => Math.round(val * 100) / 100)
+      )
+    );
+
+    geometry.setCoordinates(roundedCoords);
     
     // Get all existing features
     const existingFeatures = drawLayer.getSource().getFeatures();
