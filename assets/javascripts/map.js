@@ -564,6 +564,7 @@ function getGeometries() {
   return new ol.format.GeoJSON().writeFeatures(state.drawSource.getFeatures(), {
     dataProjection: CONFIG.PROJECTION.EPSG_27700,
     featureProjection: CONFIG.PROJECTION.EPSG_27700,
+    decimals: 2 // Round to 2 decimal places
   });
 }
 
