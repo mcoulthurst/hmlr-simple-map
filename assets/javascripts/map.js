@@ -309,6 +309,7 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
     type,
     style: drawStyles[DRAW],
     geometryFunction: type === 'Circle' ? ol.interaction.Draw.createRegularPolygon(30) : undefined,
+    
   });
 
   interaction.on('drawstart', () => {
@@ -364,7 +365,15 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
         };
         
         const unionResult = turf.union(featureCollection);
-        const combinedFeature = format.readFeature(unionResult);
+
+        // Round coordinates to 2 decimals with Turf
+        const roundedUnion = turf.truncate(unionResult, {
+          precision: 2,       // number of decimals
+          coordinates: 2,     // round coordinates
+          mutate: false       // return a new object (safer)
+        });
+
+        const combinedFeature = format.readFeature(roundedUnion);
         source.addFeature(combinedFeature);
     }
     
