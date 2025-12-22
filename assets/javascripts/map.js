@@ -231,9 +231,36 @@ function createDrawStyles() {
 // LAYER HELPERS
 // ============================================================================
 function createBaseLayer(tileUrl) {
-  return new ol.layer.Tile({
-    source: tileUrl ? new ol.source.XYZ({ url: tileUrl }) : new ol.source.OSM(),
-  });
+  var baseLayer;
+
+  if (tileUrl.length > 0) {
+    
+    if (tileUrl.indexOf("api.os.uk")>-1) {
+      
+      baseLayer = new ol.layer.Tile({
+        source: new ol.source.XYZ({
+          url: tileUrl,
+          projection: 'EPSG:27700',
+          tileGrid: new ol.tilegrid.TileGrid({
+            origin: [-238375.0, 1376256.0],
+            resolutions: [896.0, 448.0, 224.0, 112.0, 56.0, 28.0, 14.0, 7.0, 3.5, 1.75, 0.875, 0.4375, 0.21875, 0.109375],
+            matrixIds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+          })
+        })
+      })
+
+    } else {
+      baseLayer = new ol.layer.Tile({
+          source: new ol.source.XYZ({ url: tileUrl })
+      });
+    }
+  } else {
+      baseLayer = new ol.layer.Tile({
+        source: new ol.source.OSM()
+      });
+  }
+
+  return baseLayer
 }
 
 function createVectorLayers(layerSettings) {
@@ -420,7 +447,6 @@ function addCutoutInteraction(map, drawLayer, drawStyles) {
       if (features.length > 0) {
         const targetFeature = features[0];
         const targetGeom = targetFeature.getGeometry();
-        console.log(targetGeom);
         
         if (targetGeom.getType() === 'Polygon') {
           // Get the outer ring to check its orientation
@@ -433,8 +459,6 @@ function addCutoutInteraction(map, drawLayer, drawStyles) {
           
           // If both have same sign (same winding), reverse the hole
           if ((outerArea > 0 && holeArea > 0) || (outerArea < 0 && holeArea < 0)) {
-            console.log('reverse coords');
-            
             const reversedCoords = holeCoords.slice().reverse();
             linearRing = new ol.geom.LinearRing(reversedCoords);
           }
@@ -499,8 +523,6 @@ function removeSelectedFeature(id) {
 }
 
 function setDrawMode(map, modeType) {
-  console.log(modeType);
-  
   const drawLayer = getLayerByName(map, 'draw_layer');
   const drawStyles = createDrawStyles();
   
