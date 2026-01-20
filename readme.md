@@ -24,7 +24,7 @@ First, install the package to your prototype. In terminal run the following comm
 
 ### Import the Component
 
-Set the vlues of the map in your HTML template. (This currently only works as a nunjucks macro):
+Set the values of the map in your HTML template. (This currently only works as a nunjucks macro):
 
 ```njk
 {% from "hmlrMap.njk" import hmlrMap %}
