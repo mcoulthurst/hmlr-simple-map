@@ -264,8 +264,10 @@ function createBaseLayer(tileUrl) {
 }
 
 function createVectorLayers(layerSettings) {
+
   if (!layerSettings || !Array.isArray(layerSettings)) return [];
-  return layerSettings.map(
+
+  let layers = layerSettings.map(
     (cfg, i) =>
       new ol.layer.Vector({
         name: `LAYER_${i + 1}`,
@@ -273,6 +275,8 @@ function createVectorLayers(layerSettings) {
         style: createStyle(cfg.style),
       }),
   );
+
+  return layers
 }
 
 function createDrawLayer() {
@@ -346,21 +350,34 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
 
   interaction.on('drawend', (event) => {
     const newFeature = event.feature;
+    const id = Date.now();
+
+    newFeature.setId(id);
+    newFeature.setProperties({ idx: id });
     
+    /*
     // Get all existing features
-    const existingFeatures = drawLayer.getSource().getFeatures();
-   
+    //const existingFeatures = drawLayer.getSource().getFeatures();
+    
     if (type ==="Polygon" || type === "Circle") {
       if (existingFeatures.length > 0) {
+        console.log("newFeature combine");
         combinePolygons([...existingFeatures, newFeature]);
       }else{
+        console.log("newFeature Poly Circ");
+        console.log(newFeature);
+        
         drawLayer.getSource().addFeature(newFeature);
       }
-    }else{
-        drawLayer.getSource().addFeature(newFeature);
+    }else{ 
+      drawLayer.getSource().addFeature(newFeature);
     }
+    */
+    
+    // simply add each feature for now so that they can be deleted
+    // need to track overlaps and then combine polygons if this is required
+    drawLayer.getSource().addFeature(newFeature);
 
-    event.feature.setProperties({ id: Date.now() });
     state.isDrawing = false;
   });
 
@@ -392,6 +409,7 @@ function addDrawInteraction(map, type, drawLayer, drawStyles) {
         
         const unionResult = turf.union(featureCollection);
         const combinedFeature = format.readFeature(unionResult);
+        combinedFeature.setId(Date.now());
         source.addFeature(combinedFeature);
     }
     
@@ -477,6 +495,7 @@ function addCutoutInteraction(map, drawLayer, drawStyles) {
         }
 
       }
+      
       e.feature.setProperties({ id: Date.now() });
       state.drawing = false;
     });
@@ -487,11 +506,32 @@ function addCutoutInteraction(map, drawLayer, drawStyles) {
 
 function addModifyInteraction(map, drawLayer, drawStyles) {
   map.removeInteraction(state.currentInteraction);
-  drawLayer.setStyle(drawStyles[EDIT]);
+  const makeStyle = (fill, stroke, width = 3, dash = null) => ({
+    fill: new ol.style.Fill({ color: fill }),
+    stroke: new ol.style.Stroke({ color: stroke, width, lineDash: dash }),
+    image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color: stroke }) }),
+  });
+  
+  drawLayer.setStyle([
+    // Main polygon style
+    new ol.style.Style(makeStyle([0, 112, 60, 0.2], CONFIG.COLORS.GREEN, 2)),
+
+    // Vertex circles
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 5,
+        fill: new ol.style.Fill({ color: CONFIG.COLORS.GREEN }),
+      }),
+      geometry: (feature) => {
+        const coords = feature.getGeometry().getCoordinates().flat(1);
+        return Array.isArray(coords) ? new ol.geom.MultiPoint(coords) : null;
+      },
+    }),
+  ]);
+  
 
   const interaction = new ol.interaction.Modify({
-    source: drawLayer.getSource(),
-    style: drawStyles[EDIT],
+    source: drawLayer.getSource()
   });
 
   interaction.on('modifystart', storeUndoState);
@@ -500,13 +540,15 @@ function addModifyInteraction(map, drawLayer, drawStyles) {
   map.addInteraction(interaction);
 }
 
-function addDeleteInteraction(map, drawLayer) {
+function addDeleteInteraction(map, drawLayer, drawStyles) {
   map.removeInteraction(state.currentInteraction);
-  drawLayer.setStyle(createDrawStyles()[REMOVE]);
+  drawLayer.setStyle(drawStyles[REMOVE]);
 
   const interaction = new ol.interaction.Select({ layers: [drawLayer] });
   interaction.getFeatures().on('add', (e) => {
-    const id = e.element.getProperties().id;
+
+    const feature = e.element;
+    const id = feature.getId();
     removeSelectedFeature(id);
     interaction.getFeatures().clear();
   });
@@ -518,7 +560,8 @@ function addDeleteInteraction(map, drawLayer) {
 function removeSelectedFeature(id) {
   storeUndoState();
   const features = state.drawSource.getFeatures();
-  const feature = features.find((f) => f.getProperties().id === id);
+  const feature = features.find((f) => f.getId() === id);
+  
   if (feature) state.drawSource.removeFeature(feature);
 }
 
@@ -533,7 +576,7 @@ function setDrawMode(map, modeType) {
     'add-point': () => addDrawInteraction(map, 'Point', drawLayer, drawStyles),
     'add-line': () => addDrawInteraction(map, 'LineString', drawLayer, drawStyles),
     'edit-area': () => addModifyInteraction(map, drawLayer, drawStyles),
-    'delete-area': () => addDeleteInteraction(map, drawLayer),
+    'delete-area': () => addDeleteInteraction(map, drawLayer, drawStyles),
   };
   if (modes[modeType]) modes[modeType]();
 }
@@ -596,7 +639,12 @@ async function loadLayerGeometries(map, layerSettings, coords, zoom) {
     const config = layerSettings[i];
     if (config.path_to_geometry) {
       const layer = map.getLayers().item(i + 1); // Base layer at index 0
-      const source = layer.getSource();
+      let source = layer.getSource();
+      
+      if(i==0){
+        const drawLayer = getLayerByName(map, 'draw_layer');
+        source = drawLayer.getSource();
+      }
       const geometryIndex = config.geometry_index ?? null;
 
       try {
