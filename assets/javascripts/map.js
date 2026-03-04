@@ -265,23 +265,34 @@ function createBaseLayer(tileUrl) {
 
 function createVectorLayers(layerSettings) {
 
+console.log('create vectors');
   if (!layerSettings || !Array.isArray(layerSettings)) return [];
 
   let layers = layerSettings.map(
-    (cfg, i) =>
-      new ol.layer.Vector({
+    (cfg, i) => {
+      let vectorSource = new ol.source.Vector();
+      if(i==0){
+        state.drawSource = new ol.source.Vector();
+        vectorSource = state.drawSource;
+      } 
+
+      return new ol.layer.Vector({
         name: `LAYER_${i + 1}`,
-        source: new ol.source.Vector(),
+        source: vectorSource,
         style: createStyle(cfg.style),
-      }),
+      })
+    }
   );
+console.log(layers);
 
   return layers
 }
 
 function createDrawLayer() {
+  console.log('create draw');
+  
   state.drawSource = new ol.source.Vector();
-  return new ol.layer.Vector({ name: 'draw_layer', source: state.drawSource });
+  return new ol.layer.Vector({ name: 'LAYER_1', source: state.drawSource });
 }
 
 function getLayerByName(map, name) {
@@ -566,7 +577,9 @@ function removeSelectedFeature(id) {
 }
 
 function setDrawMode(map, modeType) {
-  const drawLayer = getLayerByName(map, 'draw_layer');
+  console.log('set draw mode');
+  
+  const drawLayer = getLayerByName(map, 'LAYER_1');
   const drawStyles = createDrawStyles();
   
   const modes = {
@@ -640,11 +653,13 @@ async function loadLayerGeometries(map, layerSettings, coords, zoom) {
     if (config.path_to_geometry) {
       const layer = map.getLayers().item(i + 1); // Base layer at index 0
       let source = layer.getSource();
+      console.log("load layers");
+      console.log(i, config);
       
-      if(i==0){
+      /* if(i==0){
         const drawLayer = getLayerByName(map, 'draw_layer');
         source = drawLayer.getSource();
-      }
+      } */
       const geometryIndex = config.geometry_index ?? null;
 
       try {
@@ -694,12 +709,16 @@ async function createMap(target, options = {}) {
 
   const coords = options.coords || CONFIG.DEFAULTS.COORDS;
   const zoom = options.zoom || CONFIG.DEFAULTS.ZOOM;
+console.log('create map');
 
   const layers = [
     createBaseLayer(options.tile_url),
-    ...createVectorLayers(options.layers),
-    createDrawLayer(),
+    ...createVectorLayers(options.layers)
   ];
+
+  if(options.layers && options.layers.length == 0){
+      createDrawLayer();
+  }
 
   const map = new ol.Map({
     target,
